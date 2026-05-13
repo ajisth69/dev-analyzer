@@ -172,7 +172,7 @@ export interface CompareDevsResponse {
   dev2: AnalyzerResponse;
 }
 
-const BASE_URL = 'github-repo-analyser.ajisth007.workers.dev';
+const BASE_URL = 'https://github-repo-analyser.ajisth007.workers.dev';
 const WORKER_URL = `${BASE_URL}/api/analyze`;
 const ANALYZE_REPO_URL = `${BASE_URL}/api/analyze-repo`;
 const COMPARE_URL = `${BASE_URL}/api/compare-repos`;
