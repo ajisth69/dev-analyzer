@@ -23,9 +23,18 @@ export function UserProfile({ data }: { data: AnalyzerResponse }) {
               <p className="text-slate-500 text-sm font-mono mt-0.5">{data.analyzedReposCount} repos analyzed</p>
             </div>
           </div>
-          <div className="flex items-center gap-8">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-8 mt-4 md:mt-0">
             <ScoreRing value={pack.algorithmicScore} label="Algorithm" color="#38bdf8" />
             <ScoreRing value={Math.min(Math.round(data.devIq / 40), 100)} max={100} label="Dev IQ" color="#818cf8" />
+            {pack.algorithmicMetrics.Security !== undefined && (
+              <ScoreRing value={pack.algorithmicMetrics.Security} label="Security" color="#10b981" size={72} />
+            )}
+            {pack.algorithmicMetrics.Architecture !== undefined && (
+              <ScoreRing value={pack.algorithmicMetrics.Architecture} label="Architecture" color="#a78bfa" size={72} />
+            )}
+            {pack.algorithmicMetrics.Modernity !== undefined && (
+              <ScoreRing value={pack.algorithmicMetrics.Modernity} label="Modernity" color="#f43f5e" size={72} />
+            )}
           </div>
         </div>
         <div className="mt-5 relative">
@@ -59,9 +68,18 @@ export function RepoProfile({ data }: { data: RepoAnalysisResponse }) {
             <p className="text-slate-500 font-mono text-sm">{data.owner}</p>
             <h2 className="text-3xl font-black tracking-tight gradient-purple">{data.repoName}</h2>
           </div>
-          <div className="flex items-center gap-8">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-8 mt-4 md:mt-0">
             <ScoreRing value={pack.algorithmicScore} label="Algorithm" color="#a78bfa" />
             <ScoreRing value={Math.min(Math.round(data.devIq / 40), 100)} max={100} label="Repo IQ" color="#818cf8" />
+            {pack.algorithmicMetrics.Security !== undefined && (
+              <ScoreRing value={pack.algorithmicMetrics.Security} label="Security" color="#10b981" size={72} />
+            )}
+            {pack.algorithmicMetrics.Architecture !== undefined && (
+              <ScoreRing value={pack.algorithmicMetrics.Architecture} label="Architecture" color="#a78bfa" size={72} />
+            )}
+            {pack.algorithmicMetrics.Modernity !== undefined && (
+              <ScoreRing value={pack.algorithmicMetrics.Modernity} label="Modernity" color="#f43f5e" size={72} />
+            )}
           </div>
         </div>
         <div className="mt-5 relative">

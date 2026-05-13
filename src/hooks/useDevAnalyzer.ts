@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { openDB } from 'idb';
 
-const DB_NAME = 'DevAnalyzerCacheV5';
+const DB_NAME = 'DevAnalyzerCacheV6';
 const STORE_NAME = 'devProfiles';
 const CACHE_EXPIRY = 1000 * 60 * 60; // 1 hour
 
@@ -10,12 +10,45 @@ export interface AnalysisMetrics {
   Documentation: number;
   Versatility: number;
   Popularity: number;
+  Architecture?: number;
+  Modernity?: number;
+  [key: string]: number | undefined;
 }
 
 export interface TrackSignal {
   name: string;
   score: number;
   evidence: string[];
+}
+
+export type Severity = 'critical' | 'high' | 'medium' | 'low';
+
+export interface SecurityFinding {
+  ruleId: string;
+  title: string;
+  detail: string;
+  severity: Severity;
+  file?: string;
+  line?: number;
+  recommendation: string;
+  confidence: number;
+}
+
+export interface DependencyRisk {
+  title: string;
+  detail: string;
+  severity: Severity;
+  ecosystem: string;
+  packageName?: string;
+  recommendation: string;
+}
+
+export interface EvidenceSummary {
+  filesScanned: number;
+  sourceFilesScanned: number;
+  configFilesScanned: number;
+  bytesScanned: number;
+  truncated: boolean;
 }
 
 export interface AdvancedAnalysis {
@@ -35,6 +68,16 @@ export interface AdvancedAnalysis {
   contributionFingerprint: Array<{ title: string; detail: string; impact?: 'High' | 'Medium' | 'Low' }>;
   timeline: Array<{ label: string; detail: string; intensity: number }>;
   confidence: number;
+  securityScore?: number;
+  vulnerabilities?: SecurityFinding[];
+  dependencyRisks?: DependencyRisk[];
+  architectureFindings?: Array<{ title: string; detail: string; impact?: 'High' | 'Medium' | 'Low' }>;
+  codeSmells?: Array<{ title: string; detail: string; impact?: 'High' | 'Medium' | 'Low' }>;
+  testQuality?: { score: number; evidence: string[]; gaps: string[] };
+  productionReadiness?: { score: number; evidence: string[]; blockers: string[] };
+  confidenceBreakdown?: Array<{ label: string; score: number; detail: string }>;
+  severityCounts?: Record<Severity, number>;
+  evidenceSummary?: EvidenceSummary;
   deepAnalysis?: {
     summary: string;
     architecture: string;
@@ -91,15 +134,16 @@ export interface CompareDevsResponse {
   dev2: AnalyzerResponse;
 }
 
-const WORKER_URL = 'https://github-repo-analyser.ajisth007.workers.dev/api/analyze'; 
-const ANALYZE_REPO_URL = 'https://github-repo-analyser.ajisth007.workers.dev/api/analyze-repo';
-const COMPARE_URL = 'https://github-repo-analyser.ajisth007.workers.dev/api/compare-repos';
-const COMPARE_DEVS_URL = 'https://github-repo-analyser.ajisth007.workers.dev/api/compare-devs';
+const BASE_URL = 'github-repo-analyser.ajisth007.workers.dev';
+const WORKER_URL = `${BASE_URL}/api/analyze`;
+const ANALYZE_REPO_URL = `${BASE_URL}/api/analyze-repo`;
+const COMPARE_URL = `${BASE_URL}/api/compare-repos`;
+const COMPARE_DEVS_URL = `${BASE_URL}/api/compare-devs`;
 
 export function useDevAnalyzer() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [data, setData] = useState<AnalyzerResponse | null>(null);
   const [repoData, setRepoData] = useState<RepoAnalysisResponse | null>(null);
   const [compareData, setCompareData] = useState<CompareResponse | null>(null);
@@ -124,7 +168,7 @@ export function useDevAnalyzer() {
 
   const analyze = useCallback(async (username: string) => {
     if (!username.trim()) return;
-    
+
     setLoading(true);
     setError(null);
     clearAllData();
@@ -164,7 +208,7 @@ export function useDevAnalyzer() {
 
   const analyzeRepo = useCallback(async (repo: string) => {
     if (!repo.trim()) return;
-    
+
     setLoading(true);
     setError(null);
     clearAllData();
@@ -204,7 +248,7 @@ export function useDevAnalyzer() {
 
   const compareRepos = useCallback(async (repo1: string, repo2: string) => {
     if (!repo1.trim() || !repo2.trim()) return;
-    
+
     setLoading(true);
     setError(null);
     clearAllData();
@@ -244,7 +288,7 @@ export function useDevAnalyzer() {
 
   const compareDevs = useCallback(async (dev1: string, dev2: string) => {
     if (!dev1.trim() || !dev2.trim()) return;
-    
+
     setLoading(true);
     setError(null);
     clearAllData();

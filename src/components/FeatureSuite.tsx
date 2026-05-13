@@ -78,6 +78,13 @@ function InsightList({ items }: { items: InsightItem[] }) {
   );
 }
 
+function severityTone(severity: string) {
+  if (severity === 'critical') return 'border-red-400/40 bg-red-500/10 text-red-200';
+  if (severity === 'high') return 'border-orange-400/40 bg-orange-500/10 text-orange-200';
+  if (severity === 'medium') return 'border-amber-400/40 bg-amber-500/10 text-amber-200';
+  return 'border-slate-700 bg-slate-950 text-slate-300';
+}
+
 function LanguageMiniGraph({ pack }: { pack: LocalFeaturePack }) {
   return (
     <div className="rounded-xl bg-slate-900/55 border border-slate-800 p-4">
@@ -113,8 +120,8 @@ export function FeatureSuite({ pack }: FeatureSuiteProps) {
         {Object.entries(pack.algorithmicMetrics).map(([label, value]) => (
           <div key={label} className="bg-[#131b2f] border border-slate-800 rounded-2xl p-5">
             <p className="text-xs uppercase tracking-wider font-black text-slate-500">{label}</p>
-            <p className="mt-2 text-3xl font-black text-white">{value}<span className="text-sm text-slate-500">/100</span></p>
-            <Meter value={value} />
+            <p className="mt-2 text-3xl font-black text-white">{value || 0}<span className="text-sm text-slate-500">/100</span></p>
+            <Meter value={value || 0} />
           </div>
         ))}
       </div>
@@ -226,6 +233,80 @@ export function FeatureSuite({ pack }: FeatureSuiteProps) {
         </Panel>
       )}
 
+      <Panel title="Strict Security Audit" icon={<Shield className={iconClass} />}>
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+          {[
+            ['Security', `${pack.securityScore}/100`],
+            ['Critical', pack.severityCounts.critical],
+            ['High', pack.severityCounts.high],
+            ['Medium', pack.severityCounts.medium],
+            ['Low', pack.severityCounts.low],
+            ['Files', pack.evidenceSummary?.filesScanned ?? 0],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-xl border border-slate-800 bg-slate-900/55 p-4">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</p>
+              <p className="mt-2 text-2xl font-black text-white">{value}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="rounded-xl border border-slate-800 bg-slate-900/55 p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h4 className="font-black text-slate-100">Vulnerabilities</h4>
+              <span className="text-xs font-black text-primary">{pack.vulnerabilities.length}</span>
+            </div>
+            <div className="space-y-3">
+              {pack.vulnerabilities.length === 0 ? (
+                <p className="text-sm text-slate-400">No deterministic vulnerability pattern found in scanned evidence.</p>
+              ) : pack.vulnerabilities.slice(0, 5).map((finding) => (
+                <div key={`${finding.ruleId}-${finding.file}-${finding.line}`} className="rounded-lg border border-slate-800 bg-slate-950/70 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <h5 className="font-bold text-slate-100">{finding.title}</h5>
+                    <span className={`shrink-0 rounded-md border px-2 py-1 text-[10px] font-black uppercase ${severityTone(finding.severity)}`}>
+                      {finding.severity}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-400">{finding.detail}</p>
+                  <p className="mt-2 text-[11px] text-slate-500">{finding.file}{finding.line ? `:${finding.line}` : ''}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/55 p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <h4 className="font-black text-slate-100">Dependencies</h4>
+                <span className="text-xs font-black text-primary">{pack.algorithmicMetrics.Dependencies ?? 0}/100</span>
+              </div>
+              <Meter value={pack.algorithmicMetrics.Dependencies ?? 0} color="bg-amber-400" />
+              <div className="mt-3 space-y-2">
+                {pack.dependencyRisks.length === 0 ? (
+                  <p className="text-sm text-slate-400">No dependency risk found in scanned manifests.</p>
+                ) : pack.dependencyRisks.slice(0, 4).map((risk) => (
+                  <p key={`${risk.ecosystem}-${risk.packageName}-${risk.title}`} className="text-xs leading-relaxed text-slate-400">
+                    <span className="font-bold text-slate-200">{risk.title}</span> - {risk.detail}
+                  </p>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-800 bg-slate-900/55 p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <h4 className="font-black text-slate-100">Production Readiness</h4>
+                <span className="text-xs font-black text-primary">{pack.productionReadiness.score}/100</span>
+              </div>
+              <Meter value={pack.productionReadiness.score} color="bg-emerald-500" />
+              <p className="mt-3 text-xs leading-relaxed text-slate-400">{pack.productionReadiness.evidence.join(' | ')}</p>
+              {pack.productionReadiness.blockers.length > 0 && (
+                <p className="mt-2 text-xs leading-relaxed text-amber-300">{pack.productionReadiness.blockers.slice(0, 3).join(' | ')}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </Panel>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Panel title="1. Growth Roadmap" icon={<Flag className={iconClass} />}>
           <InsightList items={pack.roadmap} />
@@ -332,7 +413,7 @@ export function FeatureSuite({ pack }: FeatureSuiteProps) {
           <div className="space-y-3">
             <div className="rounded-xl border border-slate-800 bg-slate-900/55 p-4">
               <h4 className="font-bold text-slate-100">Category Edge</h4>
-              <p className="mt-2 text-sm text-slate-400">Strongest axis: {Object.entries(pack.algorithmicMetrics).sort((a, b) => b[1] - a[1])[0]?.[0]}.</p>
+              <p className="mt-2 text-sm text-slate-400">Strongest axis: {Object.entries(pack.algorithmicMetrics).sort((a, b) => (b[1] || 0) - (a[1] || 0))[0]?.[0]}.</p>
             </div>
             <div className="rounded-xl border border-slate-800 bg-slate-900/55 p-4">
               <h4 className="font-bold text-slate-100">Best Matchup Angle</h4>

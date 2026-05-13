@@ -1,4 +1,13 @@
-import { AdvancedAnalysis, AnalysisMetrics, AnalyzerResponse, RepoAnalysisResponse } from '../hooks/useDevAnalyzer';
+import {
+  AdvancedAnalysis,
+  AnalysisMetrics,
+  AnalyzerResponse,
+  DependencyRisk,
+  EvidenceSummary,
+  RepoAnalysisResponse,
+  SecurityFinding,
+  Severity,
+} from '../hooks/useDevAnalyzer';
 
 export interface InsightItem {
   title: string;
@@ -78,6 +87,16 @@ export interface LocalFeaturePack {
     remarks: Array<{ topic: string; remark: string }>;
   };
   weaknessDetector: InsightItem[];
+  securityScore: number;
+  vulnerabilities: SecurityFinding[];
+  dependencyRisks: DependencyRisk[];
+  architectureFindings: InsightItem[];
+  codeSmells: InsightItem[];
+  testQuality: { score: number; evidence: string[]; gaps: string[] };
+  productionReadiness: { score: number; evidence: string[]; blockers: string[] };
+  confidenceBreakdown: Array<{ label: string; score: number; detail: string }>;
+  severityCounts: Record<Severity, number>;
+  evidenceSummary?: EvidenceSummary;
   shareCard: {
     title: string;
     subtitle: string;
@@ -93,12 +112,16 @@ type ParsedLanguage = {
 };
 
 const ROLE_PROFILES = [
-  { role: 'Frontend Engineer', languages: ['TypeScript', 'JavaScript', 'HTML', 'CSS', 'Vue', 'Svelte', 'Astro', 'MDX'], track: 'Frontend Product' },
-  { role: 'Backend Engineer', languages: ['Python', 'Go', 'Java', 'Rust', 'C#', 'Ruby', 'PHP', 'Elixir', 'Scala', 'Kotlin', 'TypeScript'], track: 'Backend / API' },
-  { role: 'Full Stack Engineer', languages: ['TypeScript', 'JavaScript', 'Python', 'Go', 'Java', 'HTML', 'CSS'], track: 'Full Stack Product' },
-  { role: 'Systems Engineer', languages: ['C', 'C++', 'Rust', 'Zig', 'Assembly', 'Objective-C'], track: 'Systems / Low Level' },
-  { role: 'DevOps / Platform Engineer', languages: ['Shell', 'Go', 'Python', 'HCL', 'Dockerfile', 'Makefile', 'Nix', 'YAML'], track: 'DevOps / Platform' },
-  { role: 'ML / Data Engineer', languages: ['Python', 'Jupyter Notebook', 'R', 'Julia', 'Scala', 'MATLAB'], track: 'ML / Data' },
+  { role: 'Frontend Engineer', languages: ['TypeScript', 'JavaScript', 'HTML', 'CSS', 'Vue', 'Svelte', 'Astro', 'MDX', 'React', 'Next.js'], track: 'Frontend Product' },
+  { role: 'Backend Engineer', languages: ['Python', 'Go', 'Java', 'Rust', 'C#', 'Ruby', 'PHP', 'Elixir', 'Scala', 'Kotlin', 'TypeScript', 'Node.js', 'GraphQL'], track: 'Backend / API' },
+  { role: 'Full Stack Engineer', languages: ['TypeScript', 'JavaScript', 'Python', 'Go', 'Java', 'HTML', 'CSS', 'React', 'Node.js'], track: 'Full Stack Product' },
+  { role: 'Systems Engineer', languages: ['C', 'C++', 'Rust', 'Zig', 'Assembly', 'Objective-C', 'Nim', 'Crystal'], track: 'Systems / Low Level' },
+  { role: 'DevOps / Platform Engineer', languages: ['Shell', 'Go', 'Python', 'HCL', 'Dockerfile', 'Makefile', 'Nix', 'YAML', 'Kubernetes', 'Ansible'], track: 'DevOps / Platform' },
+  { role: 'ML / Data Engineer', languages: ['Python', 'Jupyter Notebook', 'R', 'Julia', 'Scala', 'MATLAB', 'SQL'], track: 'ML / Data' },
+  { role: 'Mobile Engineer', languages: ['Swift', 'Kotlin', 'Dart', 'Objective-C', 'Java', 'TypeScript'], track: 'Mobile Product' },
+  { role: 'Web3 / Smart Contract Engineer', languages: ['Solidity', 'Rust', 'TypeScript', 'Go', 'Vyper'], track: 'Web3 / Crypto' },
+  { role: 'Game Developer', languages: ['C++', 'C#', 'HLSL', 'GLSL', 'Lua', 'Rust'], track: 'Game Development' },
+  { role: 'Security Engineer', languages: ['Python', 'C', 'Assembly', 'Rust', 'Go', 'Shell', 'Ruby'], track: 'Security / Research' }
 ];
 
 const COMPLEXITY: Record<string, number> = {
@@ -126,6 +149,19 @@ const COMPLEXITY: Record<string, number> = {
   'Jupyter Notebook': 62,
   R: 66,
   Julia: 78,
+  Swift: 78,
+  Dart: 74,
+  Solidity: 88,
+  Vyper: 86,
+  Lua: 60,
+  SQL: 56,
+  Nim: 82,
+  Crystal: 80,
+  Elixir: 84,
+  Clojure: 88,
+  Haskell: 96,
+  OCaml: 92,
+  Erlang: 90
 };
 
 const LANGUAGE_COLORS = ['#38bdf8', '#818cf8', '#f59e0b', '#10b981', '#f43f5e', '#a78bfa', '#22c55e', '#eab308'];
@@ -232,11 +268,16 @@ function buildTrackSignals(target: Target): TrackSignal[] {
   const frontendCore = languagePct(languages, ['TypeScript', 'JavaScript', 'HTML', 'CSS', 'Vue', 'Svelte', 'Astro', 'MDX']);
   const browserMarkup = languagePct(languages, ['HTML', 'CSS', 'Vue', 'Svelte', 'Astro']);
   const typedJs = languagePct(languages, ['TypeScript']);
-  const backendCore = languagePct(languages, ['Python', 'Go', 'Java', 'Rust', 'C#', 'Ruby', 'PHP', 'Elixir', 'Scala', 'Kotlin']);
+  const backendCore = languagePct(languages, ['Python', 'Go', 'Java', 'Rust', 'C#', 'Ruby', 'PHP', 'Elixir', 'Scala', 'Kotlin', 'Erlang', 'Clojure']);
   const nodeBackendAmbiguous = languagePct(languages, ['TypeScript', 'JavaScript']) * (browserMarkup >= 15 ? 0.15 : 0.35);
-  const systemsCore = languagePct(languages, ['C', 'C++', 'Rust', 'Zig', 'Assembly', 'Objective-C']);
-  const dataCore = languagePct(languages, ['Python', 'Jupyter Notebook', 'R', 'Julia', 'Scala', 'MATLAB']);
-  const devopsCore = languagePct(languages, ['Shell', 'Dockerfile', 'HCL', 'Makefile', 'Nix', 'YAML']);
+  const systemsCore = languagePct(languages, ['C', 'C++', 'Rust', 'Zig', 'Assembly', 'Objective-C', 'Nim', 'Crystal', 'Haskell', 'OCaml']);
+  const dataCore = languagePct(languages, ['Python', 'Jupyter Notebook', 'R', 'Julia', 'Scala', 'MATLAB', 'SQL']);
+  const devopsCore = languagePct(languages, ['Shell', 'Dockerfile', 'HCL', 'Makefile', 'Nix', 'YAML', 'Groovy']);
+  const mobileCore = languagePct(languages, ['Swift', 'Kotlin', 'Dart', 'Objective-C']);
+  const web3Core = languagePct(languages, ['Solidity', 'Vyper']) + languagePct(languages, ['Rust', 'Go', 'TypeScript']) * 0.2;
+  const gameCore = languagePct(languages, ['C++', 'C#', 'Lua', 'HLSL', 'GLSL']);
+  const securityCore = languagePct(languages, ['Python', 'C', 'Assembly', 'Rust', 'Go', 'Shell']) * 0.4;
+
   const repoBoost = Math.min(repoCountOf(target), 20) * 0.35;
   const scale = devIqSignal(target.devIq) * 0.18;
 
@@ -246,6 +287,10 @@ function buildTrackSignals(target: Target): TrackSignal[] {
   const dataScore = clamp(dataCore * 0.78 + languagePct(languages, ['Python']) * 0.12 + repoBoost + scale);
   const devopsScore = clamp(devopsCore * 0.9 + languagePct(languages, ['Go', 'Python']) * 0.1 + repoBoost + scale);
   const fullStackScore = clamp(Math.min(frontendScore, backendScore) * 1.18 + Math.min(frontendScore + backendScore, 150) * 0.08);
+  const mobileScore = clamp(mobileCore * 0.95 + repoBoost + scale);
+  const web3Score = clamp(web3Core * 0.88 + repoBoost + scale);
+  const gameScore = clamp(gameCore * 0.9 + repoBoost + scale);
+  const securityScore = clamp(securityCore * 0.8 + repoBoost + scale);
 
   const tracks: TrackSignal[] = [
     { name: 'Frontend Product', score: frontendScore, evidence: [`Frontend language signal ${clamp(frontendCore)}%`, browserMarkup > 0 ? `UI markup/style signal ${clamp(browserMarkup)}%` : 'JS/TS-only frontend evidence possible'] },
@@ -254,9 +299,13 @@ function buildTrackSignals(target: Target): TrackSignal[] {
     { name: 'Systems / Low Level', score: systemsScore, evidence: [`Systems language signal ${clamp(systemsCore)}%`, `Complexity ${complexitySignal(languages)}/100`] },
     { name: 'DevOps / Platform', score: devopsScore, evidence: [`Platform language signal ${clamp(devopsCore)}%`, 'Automation languages are treated as first-class work'] },
     { name: 'ML / Data', score: dataScore, evidence: [`Data language signal ${clamp(dataCore)}%`, 'Python/Jupyter/R/Julia are evaluated as data work, not backend-only work'] },
+    { name: 'Mobile Product', score: mobileScore, evidence: [`Mobile language signal ${clamp(mobileCore)}%`] },
+    { name: 'Web3 / Crypto', score: web3Score, evidence: [`Web3 language signal ${clamp(web3Core)}%`] },
+    { name: 'Game Development', score: gameScore, evidence: [`Game dev language signal ${clamp(gameCore)}%`] },
+    { name: 'Security / Research', score: securityScore, evidence: [`Security language signal ${clamp(securityCore)}%`] }
   ];
 
-  return tracks.sort((a, b) => b.score - a.score);
+  return tracks.sort((a, b) => b.score - a.score).filter(t => t.score > 8);
 }
 
 function buildLocalMetrics(target: Target, kind: 'dev' | 'repo', tracks: TrackSignal[]): AnalysisMetrics {
@@ -267,22 +316,29 @@ function buildLocalMetrics(target: Target, kind: 'dev' | 'repo', tracks: TrackSi
   const focus = focusSignal(languages);
   const repoCount = repoCountOf(target);
   const breadth = clamp(48 + Math.min(languages.filter((lang) => lang.pct >= 5).length, 6) * 7 + Math.min(repoCount, 16) * 0.6);
+  
+  const Modernity = clamp(languagePct(languages, ['Rust', 'Go', 'TypeScript', 'Svelte', 'Astro', 'Kotlin', 'Swift', 'Zig', 'Solidity']) * 0.8 + scale * 0.2 + (target.devIq > 500_000 ? 10 : 0));
+  const Architecture = clamp(complexity * 0.4 + scale * 0.3 + primaryTrack.score * 0.2 + (kind === 'repo' ? 10 : 0));
 
   return {
     Logic: clamp(primaryTrack.score * 0.42 + scale * 0.28 + complexity * 0.22 + focus * 0.08),
     Documentation: clamp(42 + scale * 0.24 + Math.min(repoCount, 18) * 1.2 + (kind === 'repo' ? primaryTrack.score * 0.16 : primaryTrack.score * 0.1)),
     Versatility: clamp(primaryTrack.name === 'Full Stack Product' ? breadth + 14 : breadth + Math.min(tracks[1]?.score || 0, 60) * 0.12),
     Popularity: clamp(scale + (target.devIq > 1_000_000 ? 10 : 0)),
+    Architecture,
+    Modernity
   };
 }
 
 function weightedLocalScore(metrics: AnalysisMetrics, primaryTrack: TrackSignal) {
   return clamp(
-    metrics.Logic * 0.35 +
-    metrics.Popularity * 0.28 +
-    metrics.Documentation * 0.17 +
-    metrics.Versatility * 0.1 +
-    primaryTrack.score * 0.1
+    metrics.Logic * 0.25 +
+    metrics.Popularity * 0.20 +
+    metrics.Documentation * 0.15 +
+    metrics.Versatility * 0.10 +
+    (metrics.Architecture || 50) * 0.15 +
+    (metrics.Modernity || 50) * 0.05 +
+    primaryTrack.score * 0.10
   );
 }
 
@@ -388,7 +444,7 @@ function buildFingerprint(target: Target, metrics: AnalysisMetrics, primaryTrack
     { title: 'Detected Archetype', detail: `${primaryTrack.name} with ${primaryTrack.score}/100 confidence.` },
     { title: 'Primary Stack', detail: `${languages[0]?.name || 'Unknown'} carries ${languages[0]?.pct || 0}% of the visible code mix.` },
     { title: 'Public Footprint', detail: `${repoCount} analyzed ${repoCount === 1 ? 'repo' : 'repos'} with Dev IQ ${target.devIq.toLocaleString()}.` },
-    { title: 'Signal Shape', detail: `Strongest local axis is ${Object.entries(metrics).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Logic'}.` },
+    { title: 'Signal Shape', detail: `Strongest local axis is ${Object.entries(metrics).sort((a, b) => (b[1] || 0) - (a[1] || 0))[0]?.[0] || 'Logic'}.` },
   ];
 }
 
@@ -480,6 +536,25 @@ export function createLocalFeaturePack(target: Target, kind: 'dev' | 'repo'): Lo
       remarks: target.seniorityAnalysis.remarks
     } : undefined,
     weaknessDetector: weaknesses,
+    securityScore: metrics.Security || 50,
+    vulnerabilities: [],
+    dependencyRisks: [],
+    architectureFindings: [],
+    codeSmells: [],
+    testQuality: {
+      score: metrics.Testing || (metrics.Logic > 65 ? 60 : 40),
+      evidence: ['Local fallback has no scanned source findings from the backend.'],
+      gaps: ['Run the backend analyzer to populate strict test evidence.'],
+    },
+    productionReadiness: {
+      score: metrics.Production || (metrics.Documentation > 65 ? 58 : 42),
+      evidence: ['Local fallback is based on GitHub language/profile metrics only.'],
+      blockers: metrics.Security && metrics.Security < 60 ? ['Security score is weak in fallback metrics.'] : [],
+    },
+    confidenceBreakdown: [
+      { label: 'Fallback', score: 35, detail: 'No backend file-level scan was available for this result.' },
+    ],
+    severityCounts: { critical: 0, high: 0, medium: 0, low: 0 },
     shareCard: {
       title: name,
       subtitle: `${primaryTrack.name} Score ${algorithmicScore}/100`,
@@ -493,6 +568,22 @@ export function createLocalFeaturePack(target: Target, kind: 'dev' | 'repo'): Lo
 }
 
 function createBackendFeaturePack(advanced: AdvancedAnalysis, name: string, kindLabel: string, target: Target): LocalFeaturePack {
+  const vulnerabilities = advanced.vulnerabilities || [];
+  const dependencyRisks = advanced.dependencyRisks || [];
+  const architectureFindings = advanced.architectureFindings || [];
+  const codeSmells = advanced.codeSmells || [];
+  const securityScore = advanced.securityScore ?? advanced.metrics.Security ?? 50;
+  const severityCounts = advanced.severityCounts || { critical: 0, high: 0, medium: 0, low: 0 };
+  const testQuality = advanced.testQuality || {
+    score: advanced.metrics.Testing || 50,
+    evidence: ['Backend did not return detailed test evidence.'],
+    gaps: [],
+  };
+  const productionReadiness = advanced.productionReadiness || {
+    score: advanced.metrics.Production || 50,
+    evidence: ['Backend did not return detailed production evidence.'],
+    blockers: [],
+  };
   const explanations = buildExplanations(
     target,
     advanced.metrics,
@@ -521,13 +612,16 @@ function createBackendFeaturePack(advanced: AdvancedAnalysis, name: string, kind
         advanced.metrics.Documentation >= 70 ? 'Good public presentation' : '',
         advanced.metrics.Popularity >= 65 ? 'Healthy reach signal' : '',
       ].filter(Boolean),
-      risks: advanced.weaknessDetector.slice(0, 4).map((item) => item.title),
+      risks: [
+        ...vulnerabilities.slice(0, 2).map((item) => item.title),
+        ...advanced.weaknessDetector.slice(0, 4).map((item) => item.title),
+      ].slice(0, 4),
       bestFitRoles: advanced.roleFits.slice(0, 3).map((role) => role.role),
       interviewTalkingPoints: [
         `Explain the strongest ${advanced.primaryTrack.name.toLowerCase()} repository from architecture to delivery.`,
+        `Defend the security score: ${securityScore}/100 with ${severityCounts.critical + severityCounts.high} critical/high issue(s).`,
         'Show where testing, quality checks, or review discipline appear.',
         'Discuss why the dominant language stack was chosen.',
-        'Name one concrete improvement that would make the work more production-ready.',
       ],
     },
     contributionFingerprint: advanced.contributionFingerprint,
@@ -535,13 +629,23 @@ function createBackendFeaturePack(advanced: AdvancedAnalysis, name: string, kind
     explanations,
     deepAnalysis: advanced.deepAnalysis,
     weaknessDetector: advanced.weaknessDetector,
+    securityScore,
+    vulnerabilities,
+    dependencyRisks,
+    architectureFindings,
+    codeSmells,
+    testQuality,
+    productionReadiness,
+    confidenceBreakdown: advanced.confidenceBreakdown || [],
+    severityCounts,
+    evidenceSummary: advanced.evidenceSummary,
     shareCard: {
       title: name,
       subtitle: `${advanced.primaryTrack.name} Score ${advanced.algorithmicScore}/100`,
       highlights: [
         `Dev IQ ${target.devIq.toLocaleString()}`,
+        `Security ${securityScore}/100`,
         `Confidence ${advanced.confidence}/100`,
-        `Best fit: ${advanced.roleFits[0]?.role || 'Generalist'}`,
       ],
     },
   };
