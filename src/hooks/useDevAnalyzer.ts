@@ -40,7 +40,44 @@ export interface DependencyRisk {
   severity: Severity;
   ecosystem: string;
   packageName?: string;
+  version?: string;
+  source?: 'heuristic' | 'osv' | 'deps.dev' | 'scorecard' | 'github';
   recommendation: string;
+}
+
+export interface DependencyQuery {
+  ecosystem: string;
+  packageName: string;
+  version?: string;
+  manifest: string;
+}
+
+export interface ExternalDependencySignal {
+  ecosystem: string;
+  packageName: string;
+  version?: string;
+  vulnerabilityId?: string;
+  title: string;
+  detail: string;
+  severity: Severity;
+  source: 'osv' | 'deps.dev' | 'github';
+  recommendation: string;
+}
+
+export interface ExternalRepoSignal {
+  source: 'scorecard' | 'github';
+  title: string;
+  detail: string;
+  severity: Severity;
+  score?: number;
+  recommendation: string;
+}
+
+export interface ExternalAnalysisSignals {
+  dependencySignals: ExternalDependencySignal[];
+  repoSignals: ExternalRepoSignal[];
+  dependencyQueries: DependencyQuery[];
+  sources: string[];
 }
 
 export interface EvidenceSummary {
@@ -78,6 +115,7 @@ export interface AdvancedAnalysis {
   confidenceBreakdown?: Array<{ label: string; score: number; detail: string }>;
   severityCounts?: Record<Severity, number>;
   evidenceSummary?: EvidenceSummary;
+  externalSignals?: ExternalAnalysisSignals;
   deepAnalysis?: {
     summary: string;
     architecture: string;

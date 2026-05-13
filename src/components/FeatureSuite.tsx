@@ -241,7 +241,7 @@ export function FeatureSuite({ pack }: FeatureSuiteProps) {
             ['High', pack.severityCounts.high],
             ['Medium', pack.severityCounts.medium],
             ['Low', pack.severityCounts.low],
-            ['Files', pack.evidenceSummary?.filesScanned ?? 0],
+            ['API Evidence', pack.externalSignals?.dependencySignals.length || pack.externalSignals?.repoSignals.length ? 'Yes' : 'No'],
           ].map(([label, value]) => (
             <div key={label} className="rounded-xl border border-slate-800 bg-slate-900/55 p-4">
               <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</p>
@@ -281,6 +281,11 @@ export function FeatureSuite({ pack }: FeatureSuiteProps) {
                 <span className="text-xs font-black text-primary">{pack.algorithmicMetrics.Dependencies ?? 0}/100</span>
               </div>
               <Meter value={pack.algorithmicMetrics.Dependencies ?? 0} color="bg-amber-400" />
+              {pack.externalSignals && (
+                <p className="mt-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Sources: {pack.externalSignals.sources.join(', ')} | Packages checked: {pack.externalSignals.dependencyQueries.length}
+                </p>
+              )}
               <div className="mt-3 space-y-2">
                 {pack.dependencyRisks.length === 0 ? (
                   <p className="text-sm text-slate-400">No dependency risk found in scanned manifests.</p>

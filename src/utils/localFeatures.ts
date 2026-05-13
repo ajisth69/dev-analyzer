@@ -4,6 +4,7 @@ import {
   AnalyzerResponse,
   DependencyRisk,
   EvidenceSummary,
+  ExternalAnalysisSignals,
   RepoAnalysisResponse,
   SecurityFinding,
   Severity,
@@ -97,6 +98,7 @@ export interface LocalFeaturePack {
   confidenceBreakdown: Array<{ label: string; score: number; detail: string }>;
   severityCounts: Record<Severity, number>;
   evidenceSummary?: EvidenceSummary;
+  externalSignals?: ExternalAnalysisSignals;
   shareCard: {
     title: string;
     subtitle: string;
@@ -639,6 +641,7 @@ function createBackendFeaturePack(advanced: AdvancedAnalysis, name: string, kind
     confidenceBreakdown: advanced.confidenceBreakdown || [],
     severityCounts,
     evidenceSummary: advanced.evidenceSummary,
+    externalSignals: advanced.externalSignals,
     shareCard: {
       title: name,
       subtitle: `${advanced.primaryTrack.name} Score ${advanced.algorithmicScore}/100`,
