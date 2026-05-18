@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build Outputs
+dist/
+build/
+.next/
+out/
+worker/public/
+worker/dist/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Cloudflare / Serverless
+.wrangler/
+.dev.vars
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.log
+
+# OS Files
+.DS_Store
+Thumbs.db

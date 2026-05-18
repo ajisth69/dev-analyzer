@@ -1,0 +1,281 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #FFFDF7;
+  --bg-secondary: #FFF9E6;
+  --bg-card: #FFFFFF;
+  --text-primary: #1A1A1A;
+  --text-secondary: #4A4A4A;
+  --text-muted: #8A8A8A;
+  --accent: #E8A800;
+  --accent-light: #FFF3CC;
+  --accent-glow: rgba(232, 168, 0, 0.15);
+  --border: rgba(0, 0, 0, 0.08);
+  --border-accent: rgba(232, 168, 0, 0.3);
+  --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+  --shadow-lg: 0 4px 24px rgba(0,0,0,0.06);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* Glass card */
+.glass {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.card-hover { transition: all 0.3s ease; }
+.card-hover:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+  border-color: var(--border-accent);
+}
+
+/* Orbs */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  opacity: 0.4;
+  animation: float 12s ease-in-out infinite;
+}
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(10px, -15px) scale(1.03); }
+  66% { transform: translate(-8px, 10px) scale(0.97); }
+}
+
+/* Tag pills */
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--accent-light);
+  color: #8B6914;
+  border: 1px solid var(--border-accent);
+  transition: all 0.2s;
+}
+.tag-pill:hover { background: var(--accent); color: white; }
+
+/* Shimmer loading */
+.shimmer {
+  background: linear-gradient(90deg, #f5f0e0 25%, #fff8e1 50%, #f5f0e0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite;
+  border-radius: 16px;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* Animations */
+.animate-slide-up { animation: slideUp 0.5s ease-out both; }
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-scale-in { animation: scaleIn 0.25s ease-out both; }
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Glow effects */
+.glow-amber { box-shadow: 0 0 30px rgba(232, 168, 0, 0.12); }
+.glow-blue { box-shadow: 0 0 30px rgba(59, 130, 246, 0.08); }
+.glow-rose { box-shadow: 0 0 30px rgba(244, 63, 94, 0.08); }
+
+.winner-pulse { animation: winnerPulse 2s ease-in-out infinite; }
+@keyframes winnerPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 168, 0, 0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(232, 168, 0, 0); }
+}
+
+/* Noise texture */
+.noise::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.015;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Gradient text */
+.gradient-amber {
+  background: linear-gradient(135deg, #E8A800, #D4780A);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.gradient-purple {
+  background: linear-gradient(135deg, #9333ea, #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.gradient-blue {
+  background: linear-gradient(135deg, #38bdf8, #818cf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Tailwind dark overrides for warm theme */
+.text-white { color: var(--text-primary) !important; }
+/* Keep white text on gradient/colored backgrounds, buttons, and active tabs */
+[class*="bg-gradient-to"] .text-white,
+[class*="bg-gradient-to"].text-white,
+.bg-primary .text-white,
+.bg-primary.text-white,
+button .text-white,
+button.text-white,
+button,
+[class*="active-"] .text-white,
+[class*="active-"],
+[class*="bg-emerald-"],
+[class*="bg-sky-"],
+[class*="bg-amber-"],
+[class*="bg-rose-"],
+[class*="bg-orange-"],
+[class*="bg-violet-"],
+[class*="bg-purple-"],
+[class*="text-slate-950"] { color: inherit !important; }
+.bg-primary { background-color: var(--accent) !important; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+
+/* Search input */
+.search-input {
+  width: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.search-input::placeholder { color: var(--text-muted); }
+
+/* VS Badge */
+.vs-badge {
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--accent-light);
+  color: #8B6914;
+}
+
+/* Nav tab */
+.nav-tab {
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: all 0.2s;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.nav-tab:hover { background: var(--accent-light); }
+.nav-tab.active-blue,
+.nav-tab.active-indigo,
+.nav-tab.active-rose,
+.nav-tab.active-amber {
+  background: var(--accent);
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(232, 168, 0, 0.3);
+}
+
+/* Glass strong (header) */
+.glass-strong {
+  background: rgba(255, 253, 247, 0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Loading */
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  gap: 2rem;
+}
+.loading-progress {
+  width: 100%;
+  max-width: 400px;
+  height: 6px;
+  background: var(--accent-light);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.loading-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #D4780A);
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+.loading-status {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+}
+.loading-pulse {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 3px solid var(--accent-light);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Override dark Tailwind utilities for warm theme */
+.border-white\/5, .border-white\/6, .border-white\/10, [class*="border-white"] { border-color: var(--border) !important; }
+.bg-white\/3 { background: var(--bg-secondary) !important; }
+.text-slate-500, .text-slate-400 { color: var(--text-muted) !important; }
+.text-slate-300, .text-slate-200, .text-slate-100 { color: var(--text-secondary) !important; }
+[class*="bg-slate-900"],
+[class*="bg-slate-950"],
+[class*="bg-[#131b2f]"],
+[class*="bg-[#050812]"],
+.bg-slate-900\/60, .bg-slate-900\/55, .bg-slate-900\/80, .bg-slate-900, .bg-slate-950, .bg-\[\#131b2f\], .bg-\[\#131b2f\]\/80 { background: var(--bg-secondary) !important; }
+.border-slate-800, .border-slate-700, .border-slate-600, [class*="border-slate-"] { border-color: var(--border) !important; }
+.bg-\[\#050812\]\/90, .bg-\[\#050812\], .bg-slate-950\/60, .bg-slate-950\/80 { background: var(--bg-card) !important; }
+.bg-slate-800\/60, .bg-slate-800\/80, .bg-slate-800, [class*="bg-slate-800"] { background: var(--accent-light) !important; }
+
+/* Recharts override for light theme */
+.recharts-polar-grid-concentric circle { stroke: var(--border) !important; }
+.recharts-polar-angle-axis text { fill: var(--text-secondary) !important; }
+.recharts-polar-grid line { stroke: var(--border) !important; }
