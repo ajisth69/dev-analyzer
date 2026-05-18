@@ -142,6 +142,14 @@ interface GithubGraphqlProfile {
   user?: {
     login: string;
     followers?: { totalCount?: number };
+    contributionsCollection?: {
+      totalCommitContributions?: number;
+      totalPullRequestContributions?: number;
+      restrictedContributionsCount?: number;
+      contributionCalendar?: {
+        totalContributions?: number;
+      };
+    };
     repositories?: {
       totalCount?: number;
       pageInfo?: {
@@ -158,6 +166,14 @@ query DevAnalyzerProfile($login: String!, $repoCount: Int!, $cursor: String) {
   user(login: $login) {
     login
     followers { totalCount }
+    contributionsCollection {
+      totalCommitContributions
+      totalPullRequestContributions
+      restrictedContributionsCount
+      contributionCalendar {
+        totalContributions
+      }
+    }
     repositories(first: $repoCount, after: $cursor, orderBy: { field: UPDATED_AT, direction: DESC }, privacy: PUBLIC, isFork: false) {
       totalCount
       pageInfo { hasNextPage endCursor }
@@ -218,6 +234,7 @@ async function fetchUserGraphql(username: string, env: Env, budget: FetchBudget)
   let totalRepos = 0;
   const allRepoNodes: GithubGraphqlRepo[] = [];
   let pagesFetched = 0;
+  let contributions: any = null;
 
   do {
     pagesFetched += 1;
@@ -228,11 +245,22 @@ async function fetchUserGraphql(username: string, env: Env, budget: FetchBudget)
       budget,
     ).catch(() => null);
     const user: GithubGraphqlProfile["user"] = data?.user;
+    
+    if (user?.contributionsCollection) {
+      contributions = {
+        totalCommits: user.contributionsCollection.totalCommitContributions || 0,
+        totalPRs: user.contributionsCollection.totalPullRequestContributions || 0,
+        restrictedCommits: user.contributionsCollection.restrictedContributionsCount || 0,
+        calendarTotal: user.contributionsCollection.contributionCalendar?.totalContributions || 0,
+      };
+    }
+
     if (!user?.repositories?.nodes) return allRepoNodes.length > 0 ? {
       followers,
       totalRepos: totalRepos || allRepoNodes.length,
       repos: allRepoNodes.map(repoFromGraphql),
       languagesArray: allRepoNodes.map(languagesFromGraphql).filter((stats) => Object.keys(stats).length > 0),
+      contributions,
     } : null;
 
     followers = user.followers?.totalCount || followers;
@@ -249,6 +277,7 @@ async function fetchUserGraphql(username: string, env: Env, budget: FetchBudget)
     totalRepos: totalRepos || repos.length,
     repos,
     languagesArray,
+    contributions,
   };
 }
 
@@ -499,6 +528,7 @@ async function processUser(username: string, env: Env, budget: FetchBudget, batt
     advancedAnalysis,
     repos: repos.slice(0, 15).map((r: any) => ({ name: r.name, stars: r.stargazers_count || 0, forks: r.forks_count || 0, description: r.description || '' })),
     followers,
+    contributions: graphqlProfile?.contributions || null,
   };
 
   let aiResult: any = {};
@@ -583,6 +613,9 @@ function buildAIPayload(payload: any): any {
     if (payload.advancedAnalysis.severityCounts) trimmed.severityCounts = payload.advancedAnalysis.severityCounts;
     if (payload.advancedAnalysis.languageDistribution) trimmed.languages = payload.advancedAnalysis.languageDistribution.slice(0, 8).map((l: any) => `${l.name}:${l.pct}%`);
   }
+  if (payload.contributions) {
+    trimmed.contributions = payload.contributions;
+  }
   if (payload.maturityAnalysis) {
     trimmed.maturitySummary = payload.maturityAnalysis.summary?.slice(0, 300);
   }
@@ -598,8 +631,8 @@ async function getAIAnalysis(payload: any, env: Env, _budget: FetchBudget): Prom
   const systemPrompt = `You are a STRICT, no-nonsense senior staff engineer reviewing GitHub profiles. You do NOT give generous ratings. You judge like a hiring manager at FAANG. Return ONLY valid JSON, no markdown.
 Schema:
 {
-  "ai_score": <0-100. Be HARSH. 90+ = mass adopted OSS maintainer. 70-89 = strong senior. 50-69 = mid-level. 30-49 = junior. <30 = beginner. Factor: stars, forks, followers, commit regularity, language diversity, repo quality, community adoption>,
-  "ai_grade": <"S"|"A+"|"A"|"B+"|"B"|"C"|"D"|"F". S = mass industry impact. A = well-known contributor. B = solid dev. C = average. D/F = needs work>,
+  "ai_score": <0-100. Factor in actual code activity (contributions: totalCommits, totalPRs, calendarTotal), commit regularity, stars, forks, followers, language diversity, and codebase health.>,
+  "ai_grade": <"S"|"A+"|"A"|"B+"|"B"|"C"|"D"|"F". S = world-class industry leader. A = highly productive active contributor. B = solid developer. C = average. D/F = needs serious work>,
   "profile_verdict": <30 words, blunt overall assessment>,
   "code_quality_verdict": <30 words>,
   "architecture_verdict": <30 words>,
@@ -614,36 +647,54 @@ Schema:
   "top_repos_analysis": [{"repo_name": <string>, "repo_score": <0-100>, "verdict": <25 words>}]
 }
 CRITICAL RULES:
-- Most devs should score 30-60. Only mass-adopted OSS gets 80+.
-- A dev with <100 total stars across all repos CANNOT score above 50.
-- A dev with <10 followers CANNOT get grade above B.
-- Commit regularity matters. Many abandoned repos = penalty.
-- Be STRICT. If repos have no tests, no CI, no docs = heavy penalty.`;
+- Weight ACTUAL coding productivity (commits and PRs in contributions) highly.
+- If a developer has HIGH commit activity (e.g. >200 total commits/PRs/calendarTotal) and strong regularity, reward them with a good score (65-88, Grade B to A) even if they have low stars or followers! They are real builders.
+- If a developer has high stars/forks but extremely LOW commit/PR activity (e.g., <20 commits), heavily penalize them (max score 50, Grade C or D) because they are likely just forking/copying templates without writing real code.
+- If a developer has very low commits AND no tests/CI/documentation in their repos, give them a D or F.
+- Be extremely STRICT but FAIR. Reward true code quality and commit regularities.`;
 
-  const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: JSON.stringify(trimmed) },
-      ],
-      temperature: 0.9,
-      max_completion_tokens: 1500,
-      top_p: 1,
-      stream: false,
-    }),
-  });
-  if (!resp.ok) return {};
-  const data = await resp.json() as any;
-  try {
-    const content = data.choices?.[0]?.message?.content ?? "{}";
-    const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    return JSON.parse(cleaned);
-  } catch {
-    return {};
+  const models = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama-3.1-8b-instant"];
+
+  for (const model of models) {
+    try {
+      console.log(`[GROQ API] Attempting analysis using model: ${model}`);
+      const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: JSON.stringify(trimmed) },
+          ],
+          temperature: 0.9,
+          max_completion_tokens: 1500,
+          top_p: 1,
+          stream: false,
+        }),
+      });
+
+      if (resp.ok) {
+        const data = await resp.json() as any;
+        try {
+          const content = data.choices?.[0]?.message?.content ?? "{}";
+          const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+          const parsed = JSON.parse(cleaned);
+          console.log(`[GROQ API SUCCESS] Generated successfully with model: ${model}`);
+          return parsed;
+        } catch (err: any) {
+          console.error(`[GROQ JSON PARSE ERROR] Model ${model} returned unparseable content: ${err.message}`);
+        }
+      } else {
+        const errText = await resp.text().catch(() => "No error body");
+        console.warn(`[GROQ API WARN] Model ${model} failed with status ${resp.status}: ${errText}`);
+      }
+    } catch (err: any) {
+      console.error(`[GROQ MODEL ERROR] Error during ${model} run: ${err.message}`);
+    }
   }
+
+  return {};
 }
 
 export default {

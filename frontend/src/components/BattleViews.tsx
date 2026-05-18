@@ -3,6 +3,7 @@ import { DevRadarChart } from './RadarChart';
 import { BattleInsightsPanel } from './FeatureSuite';
 import { createLocalFeaturePack } from '../utils/localFeatures';
 import { TagPills, ScoreRing, WinnerBadge } from './UI';
+import { AIAnalysisPanel } from './AIAnalysisPanel';
 
 function formatDevIq(iq: number) {
   if (iq >= 1_000_000) return `${(iq / 1_000_000).toFixed(1)}M`;
@@ -70,6 +71,24 @@ export function DevBattle({ data }: { data: CompareDevsResponse }) {
         <h3 className="text-xl font-black text-white text-center mb-6">Algorithm Profile Comparison</h3>
         <DevRadarChart compareData={{ name1: dev1.username, name2: dev2.username, metrics1: p1.algorithmicMetrics, metrics2: p2.algorithmicMetrics, color1: '#38bdf8', color2: '#fbbf24' }} />
       </div>
+
+      {/* Side-by-Side AI Assessments */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-8">
+        <div className="glass border-white/5 rounded-3xl p-6">
+          <h4 className="text-base font-black text-white mb-4 flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
+            @{dev1.username}'s Intelligence Report
+          </h4>
+          <AIAnalysisPanel {...dev1} />
+        </div>
+        <div className="glass border-white/5 rounded-3xl p-6">
+          <h4 className="text-base font-black text-white mb-4 flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+            @{dev2.username}'s Intelligence Report
+          </h4>
+          <AIAnalysisPanel {...dev2} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -94,6 +113,24 @@ export function RepoBattle({ data }: { data: CompareResponse }) {
       <div className="glass border-white/5 rounded-3xl p-8">
         <h3 className="text-xl font-black text-white text-center mb-6">Architecture Comparison</h3>
         <DevRadarChart compareData={{ name1: repo1.repoName, name2: repo2.repoName, metrics1: p1.algorithmicMetrics, metrics2: p2.algorithmicMetrics, color1: '#f43f5e', color2: '#38bdf8' }} />
+      </div>
+
+      {/* Side-by-Side AI Assessments */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-8">
+        <div className="glass border-white/5 rounded-3xl p-6">
+          <h4 className="text-base font-black text-white mb-4 flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+            {repo1.repoName} Intelligence Report
+          </h4>
+          <AIAnalysisPanel {...repo1} />
+        </div>
+        <div className="glass border-white/5 rounded-3xl p-6">
+          <h4 className="text-base font-black text-white mb-4 flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
+            {repo2.repoName} Intelligence Report
+          </h4>
+          <AIAnalysisPanel {...repo2} />
+        </div>
       </div>
     </div>
   );
