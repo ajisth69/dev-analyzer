@@ -28,17 +28,6 @@ const btnStyle: React.CSSProperties = {
   boxShadow: '0 4px 14px rgba(232, 168, 0, 0.3)',
 };
 
-const inputStyle: React.CSSProperties = {
-  background: 'var(--bg-card)',
-  border: '1px solid var(--border)',
-  borderRadius: '16px',
-  color: 'var(--text-primary)',
-  fontSize: '15px',
-  fontWeight: 500,
-  width: '100%',
-  outline: 'none',
-};
-
 const wrapStyle: React.CSSProperties = {
   background: 'var(--bg-secondary)',
   border: '1px solid var(--border)',
@@ -59,9 +48,9 @@ function DualInput({ val1, setVal1, ph1, val2, setVal2, ph2, loading, btnLabel }
   const canSubmit = val1.trim() && val2.trim() && !loading;
   return (
     <div className="flex flex-col sm:flex-row items-center gap-3" style={wrapStyle}>
-      <input value={val1} onChange={(e: any) => setVal1(e.target.value)} placeholder={ph1} className="py-3.5 px-5" style={inputStyle} />
+      <input value={val1} onChange={(e: any) => setVal1(e.target.value)} placeholder={ph1} className="search-input py-3.5 px-5" />
       <div className="text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full" style={{ background: 'var(--accent-light)', color: '#8B6914' }}>VS</div>
-      <input value={val2} onChange={(e: any) => setVal2(e.target.value)} placeholder={ph2} className="py-3.5 px-5" style={inputStyle} />
+      <input value={val2} onChange={(e: any) => setVal2(e.target.value)} placeholder={ph2} className="search-input py-3.5 px-5" />
       <button type="submit" disabled={!canSubmit} className="shrink-0 w-full sm:w-auto px-7 py-3.5 rounded-2xl font-black text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={btnStyle}>
         {loading ? <div className="w-5 h-5 border-[3px] border-white/30 border-t-white rounded-full animate-spin" /> : btnLabel}
       </button>
@@ -91,7 +80,7 @@ export function SearchBar(props: Props) {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: 'var(--text-muted)' }} />
               <input value={props.usernameInput} onChange={e => props.setUsernameInput(e.target.value)}
                 placeholder="e.g. torvalds, gaearon, ajisth69..."
-                className="pl-12 pr-4 py-4 text-base" style={inputStyle} />
+                className="search-input pl-12 pr-4 py-4 text-base" />
             </div>
             <SpinnerBtn loading={loading} label="Analyze →" />
           </div>
@@ -103,7 +92,7 @@ export function SearchBar(props: Props) {
               <Box className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: 'var(--text-muted)' }} />
               <input value={props.singleRepoInput} onChange={e => props.setSingleRepoInput(e.target.value)}
                 placeholder="e.g. facebook/react, vercel/next.js..."
-                className="pl-12 pr-4 py-4 text-base" style={inputStyle} />
+                className="search-input pl-12 pr-4 py-4 text-base" />
             </div>
             <SpinnerBtn loading={loading} label="Analyze →" />
           </div>
