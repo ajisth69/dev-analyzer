@@ -855,7 +855,8 @@ export default {
 
       return new Response("Not Found", { status: 404, headers: CORS_HEADERS });
     } catch (error: any) {
-      return new Response(JSON.stringify({ error: error.message }), {
+      console.error("[Worker Error]", error);
+      return new Response(JSON.stringify({ error: "An internal server error occurred" }), {
         status: 500,
         headers: responseHeaders(origin),
       });
