@@ -141,6 +141,18 @@ interface GithubGraphqlRepo {
 interface GithubGraphqlProfile {
   user?: {
     login: string;
+    name?: string | null;
+    bio?: string | null;
+    company?: string | null;
+    location?: string | null;
+    websiteUrl?: string | null;
+    twitterUsername?: string | null;
+    isHireable?: boolean;
+    createdAt?: string;
+    status?: { message?: string | null; emoji?: string | null } | null;
+    pinnedItems?: { totalCount?: number };
+    organizations?: { totalCount?: number };
+    gists?: { totalCount?: number };
     followers?: { totalCount?: number };
     contributionsCollection?: {
       totalCommitContributions?: number;
@@ -165,6 +177,18 @@ const PROFILE_QUERY = `
 query DevAnalyzerProfile($login: String!, $repoCount: Int!, $cursor: String) {
   user(login: $login) {
     login
+    name
+    bio
+    company
+    location
+    websiteUrl
+    twitterUsername
+    isHireable
+    createdAt
+    status { message emoji }
+    pinnedItems(first: 6) { totalCount }
+    organizations { totalCount }
+    gists { totalCount }
     followers { totalCount }
     contributionsCollection {
       totalCommitContributions
@@ -235,6 +259,7 @@ async function fetchUserGraphql(username: string, env: Env, budget: FetchBudget)
   const allRepoNodes: GithubGraphqlRepo[] = [];
   let pagesFetched = 0;
   let contributions: any = null;
+  let profileDetails: any = null;
 
   do {
     pagesFetched += 1;
@@ -255,12 +280,30 @@ async function fetchUserGraphql(username: string, env: Env, budget: FetchBudget)
       };
     }
 
+    if (user) {
+      profileDetails = {
+        name: user.name || null,
+        bio: user.bio || null,
+        company: user.company || null,
+        location: user.location || null,
+        websiteUrl: user.websiteUrl || null,
+        twitterUsername: user.twitterUsername || null,
+        isHireable: user.isHireable || false,
+        createdAt: user.createdAt || null,
+        status: user.status ? { message: user.status.message, emoji: user.status.emoji } : null,
+        pinnedItemsCount: user.pinnedItems?.totalCount || 0,
+        organizationsCount: user.organizations?.totalCount || 0,
+        gistsCount: user.gists?.totalCount || 0,
+      };
+    }
+
     if (!user?.repositories?.nodes) return allRepoNodes.length > 0 ? {
       followers,
       totalRepos: totalRepos || allRepoNodes.length,
       repos: allRepoNodes.map(repoFromGraphql),
       languagesArray: allRepoNodes.map(languagesFromGraphql).filter((stats) => Object.keys(stats).length > 0),
       contributions,
+      profileDetails,
     } : null;
 
     followers = user.followers?.totalCount || followers;
@@ -278,6 +321,7 @@ async function fetchUserGraphql(username: string, env: Env, budget: FetchBudget)
     repos,
     languagesArray,
     contributions,
+    profileDetails,
   };
 }
 
@@ -529,6 +573,7 @@ async function processUser(username: string, env: Env, budget: FetchBudget, batt
     repos: repos.slice(0, 15).map((r: any) => ({ name: r.name, stars: r.stargazers_count || 0, forks: r.forks_count || 0, description: r.description || '' })),
     followers,
     contributions: graphqlProfile?.contributions || null,
+    profileDetails: graphqlProfile?.profileDetails || null,
   };
 
   let aiResult: any = {};
@@ -616,6 +661,9 @@ function buildAIPayload(payload: any): any {
   if (payload.contributions) {
     trimmed.contributions = payload.contributions;
   }
+  if (payload.profileDetails) {
+    trimmed.profileDetails = payload.profileDetails;
+  }
   if (payload.maturityAnalysis) {
     trimmed.maturitySummary = payload.maturityAnalysis.summary?.slice(0, 300);
   }
@@ -648,40 +696,47 @@ Schema:
 }
 
 COMPREHENSIVE GRADING SYSTEM:
-Evaluate the developer dynamically based on these exact 7 dimensions, maintaining a flexible yet strict perspective:
+Evaluate the developer dynamically based on these exact dimensions, maintaining a flexible yet strict perspective:
 
-1. Commit Regularity & Sincerity (25% Weight):
+1. Commit Regularity & Sincerity (20% Weight):
    - Check contribution totals and calendar details.
    - Regular daily/weekly commits indicate great dedication and sincerity. High regularity = major score boost.
    - Abandoned or highly sporadic commit histories penalty.
 
-2. Code volume & Quality (15% Weight):
+2. Code volume, Scanned Data & Quality (15% Weight):
    - Number of repositories, file structure, tests, and CI configuration.
+   - Total scanned data bytes (amount of scanned codebase data).
    - Active testing (Jest, PyTest, etc.) and codebase maintainability boost this score.
 
-3. Open Source Impact & Community (15% Weight):
+3. Open Source Impact, Achievements & Affiliations (15% Weight):
    - Followers, stars, forks, and repository engagement.
+   - Organization memberships (organizationsCount) and active Gists (gistsCount).
 
-4. Language-Specific Complexity Scale (15% Weight):
+4. Profile Decoration & Completeness (10% Weight):
+   - Profile completeness: presence of bio, location, company, website, and Twitter username.
+   - Pinned repositories/projects count (pinnedItemsCount) indicating customization and visual presentation.
+   - Presence of custom status messages and profile emojis. High profile polish = score boost.
+
+5. Language-Specific Complexity Scale (15% Weight):
    - Rate technological depth based on language choices:
      * HTML / CSS / Presentation only: Low score weighting.
      * JavaScript / PHP / Basic scripting: Medium/normal weighting (solid baseline).
      * Python / Go / Ruby / Core Backends: Normal/strong weighting.
      * TypeScript / Rust / Zig / C++ / C / Assembly / Solidity: High/expert weighting (major boost for type rigor and low-level complexity).
 
-5. Versatility & Number of Languages Known (10% Weight):
+6. Versatility & Number of Languages Known (10% Weight):
    - Broad polyglot skills, well-distributed languages, and number of active programming languages used.
 
-6. Documentation Rigor (10% Weight):
+7. Documentation Rigor (10% Weight):
    - Presence of comprehensive READMEs, setup guides, LICENSEs, and SECURITY policies.
 
-7. Collaboration & Sincerity (10% Weight):
+8. Collaboration & PR History (5% Weight):
    - Count of Pull Requests and active public organization work.
 
 CRITICAL RULES:
 - **LEGEND OVERRIDE**: If a profile is an industry legend or open-source pioneer (e.g. Torvalds, tj, yyx990803) with huge followers (>1,000) or stars (>2,000), grade them **S** or **A+** (Score 92-100) automatically, disregarding low GitHub-specific direct commit calendars.
 - **IMPOSTER PENALTY**: Standard developers with high stars/forks but extremely low active commit count (<20 commits) are template copy-pasters; cap them at a max score of 50 (Grade C or D).
-- Be incredibly strict but completely fair, rewarding true software engineering discipline, regularity, and technical depth.`;
+- Be incredibly strict but completely fair, rewarding true software engineering discipline, regularity, profile presentation, and technical depth.`;
 
   const models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it"];
 
