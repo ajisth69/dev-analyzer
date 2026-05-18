@@ -648,10 +648,11 @@ Schema:
 }
 CRITICAL RULES:
 - Weight ACTUAL coding productivity (commits and PRs in contributions) highly.
+- **LEGEND OVERRIDE (CRITICAL)**: If a developer has massive global impact (e.g. >1,000 followers, >2,000 total stars, or created industry-defining repositories like Linux, Git, React, Vue), they are a LEGEND! DO NOT penalize them for low direct GitHub-specific commit counts (since legendary creators/maintainers often code locally or manage massive mailing lists). Give them an **S** or **A+** grade (Score 90-100) automatically with ultimate respect!
 - If a developer has HIGH commit activity (e.g. >200 total commits/PRs/calendarTotal) and strong regularity, reward them with a good score (65-88, Grade B to A) even if they have low stars or followers! They are real builders.
-- If a developer has high stars/forks but extremely LOW commit/PR activity (e.g., <20 commits), heavily penalize them (max score 50, Grade C or D) because they are likely just forking/copying templates without writing real code.
+- If a standard developer (not a legend) has high stars/forks but extremely LOW commit/PR activity (e.g., <20 commits), heavily penalize them (max score 50, Grade C or D) because they are likely just forking/copying templates without writing real code.
 - If a developer has very low commits AND no tests/CI/documentation in their repos, give them a D or F.
-- Be extremely STRICT but FAIR. Reward true code quality and commit regularities.`;
+- Be extremely STRICT but FAIR. Reward true code quality, commit regularities, and global open-source impact.`;
 
   const models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it"];
 
