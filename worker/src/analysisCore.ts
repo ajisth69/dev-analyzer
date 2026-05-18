@@ -527,11 +527,37 @@ export function calculateDevIQ(repos: any[], languagesArray: RepoLanguageStats[]
   };
 
   for (const langStats of languagesArray) {
+    let repoBytes = 0;
+    let advancedBytes = 0;
+
     for (const [lang, bytes] of Object.entries(langStats)) {
       const constant = constants[lang] || 40;
       const multiplier = multipliers[lang] || 2.2;
       const lines = bytes / constant;
       devIq += lines * multiplier;
+
+      repoBytes += bytes;
+      if (multipliers[lang] && multipliers[lang] >= 3.2) {
+        advancedBytes += bytes;
+      }
+    }
+
+    // High Data Volume & Advanced Language Concentration Bonus
+    if (repoBytes > 50_000) {
+      const advancedRatio = repoBytes > 0 ? (advancedBytes / repoBytes) : 0;
+      let dataVolumeBonus = 0;
+      if (repoBytes > 2_000_000) {
+        dataVolumeBonus = 15000;
+      } else if (repoBytes > 500_000) {
+        dataVolumeBonus = 5000;
+      } else if (repoBytes > 100_000) {
+        dataVolumeBonus = 1500;
+      } else {
+        dataVolumeBonus = 400;
+      }
+
+      // Award scaled bonus: higher ratio of advanced languages = full bonus
+      devIq += dataVolumeBonus * (0.3 + 0.7 * advancedRatio);
     }
   }
 
