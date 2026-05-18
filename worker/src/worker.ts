@@ -653,7 +653,7 @@ CRITICAL RULES:
 - If a developer has very low commits AND no tests/CI/documentation in their repos, give them a D or F.
 - Be extremely STRICT but FAIR. Reward true code quality and commit regularities.`;
 
-  const models = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama-3.1-8b-instant"];
+  const models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it"];
 
   for (const model of models) {
     try {

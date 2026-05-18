@@ -469,31 +469,67 @@ export function calculateDevIQ(repos: any[], languagesArray: RepoLanguageStats[]
   let devIq = 0;
 
   const constants: Record<string, number> = {
-    JavaScript: 35,
+    Assembly: 15,
+    C: 25,
+    "C++": 25,
+    Rust: 25,
+    Zig: 25,
+    Solidity: 30,
+    Vyper: 30,
+    Haskell: 30,
+    Clojure: 35,
+    Scala: 35,
+    Java: 40,
+    "C#": 40,
+    Kotlin: 40,
+    Swift: 40,
+    Go: 40,
     TypeScript: 35,
+    JavaScript: 35,
     Python: 35,
+    Ruby: 35,
+    PHP: 35,
+    Dart: 40,
+    Shell: 45,
+    Dockerfile: 45,
+    HCL: 45,
     HTML: 45,
     CSS: 45,
-    "C++": 25,
-    C: 25,
-    Rust: 25,
   };
 
   const multipliers: Record<string, number> = {
-    HTML: 1,
-    CSS: 1,
-    JavaScript: 3,
-    TypeScript: 3,
-    Python: 3,
-    "C++": 5,
-    C: 5,
-    Rust: 5,
+    Assembly: 6.5,
+    Rust: 6.0,
+    Zig: 6.0,
+    Haskell: 5.5,
+    Solidity: 5.5,
+    Vyper: 5.5,
+    "C++": 5.0,
+    C: 5.0,
+    Go: 4.5,
+    Clojure: 4.5,
+    Scala: 4.5,
+    Java: 4.0,
+    "C#": 4.0,
+    Kotlin: 4.0,
+    Swift: 3.5,
+    TypeScript: 3.2,
+    Dart: 3.0,
+    Python: 2.8,
+    Ruby: 2.8,
+    JavaScript: 2.5,
+    PHP: 2.5,
+    Shell: 2.0,
+    Dockerfile: 2.0,
+    HCL: 2.0,
+    HTML: 1.0,
+    CSS: 1.0,
   };
 
   for (const langStats of languagesArray) {
     for (const [lang, bytes] of Object.entries(langStats)) {
       const constant = constants[lang] || 40;
-      const multiplier = multipliers[lang] || 2;
+      const multiplier = multipliers[lang] || 2.2;
       const lines = bytes / constant;
       devIq += lines * multiplier;
     }
@@ -507,9 +543,11 @@ export function calculateDevIQ(repos: any[], languagesArray: RepoLanguageStats[]
     if (repo.created_at && repo.updated_at) {
       const created = new Date(repo.created_at).getTime();
       const updated = new Date(repo.updated_at).getTime();
-      const longevityMonths = Math.max(1, (updated - created) / (1000 * 60 * 60 * 24 * 30));
-      if (longevityMonths > 6) devIq += longevityMonths * 100;
-      if (longevityMonths > 24) devIq += 2000;
+      if (!isNaN(created) && !isNaN(updated)) {
+        const longevityMonths = Math.max(1, (updated - created) / (1000 * 60 * 60 * 24 * 30));
+        if (longevityMonths > 6) devIq += longevityMonths * 100;
+        if (longevityMonths > 24) devIq += 2000;
+      }
     }
 
     if (typeof repo.open_issues_count === "number") {
@@ -519,7 +557,8 @@ export function calculateDevIQ(repos: any[], languagesArray: RepoLanguageStats[]
   }
 
   const networkMultiplier = 1 + Math.min(followers / 100, 1.5);
-  return Math.round(devIq * networkMultiplier);
+  const finalIq = Math.round(devIq * networkMultiplier);
+  return isNaN(finalIq) ? 0 : finalIq;
 }
 
 export function buildLanguageProfile(languageStats: RepoLanguageStats[]) {
