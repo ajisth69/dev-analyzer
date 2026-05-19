@@ -54,7 +54,7 @@ export interface AnalyzerResponse {
   devIq: number;
   languageTags: string[];
   maturityAnalysis?: { summary: string; metrics: AnalysisMetrics; architecture: string; modernity: string; security: string; scalability: string; remarks: Array<{ topic: string; remark: string }>; };
-  seniorityAnalysis?: any;
+  seniorityAnalysis?: { summary: string; architecture?: string; modernity?: string; security?: string; scalability?: string; remarks?: Array<{ topic: string; remark: string }> };
   analyzedReposCount: number;
   advancedAnalysis?: AdvancedAnalysis;
   ai_score?: number;
@@ -79,7 +79,7 @@ export interface RepoAnalysisResponse {
   devIq: number;
   languageTags: string[];
   maturityAnalysis?: { summary: string; metrics: AnalysisMetrics; architecture: string; modernity: string; security: string; scalability: string; remarks: Array<{ topic: string; remark: string }>; };
-  seniorityAnalysis?: any;
+  seniorityAnalysis?: { summary: string; architecture?: string; modernity?: string; security?: string; scalability?: string; remarks?: Array<{ topic: string; remark: string }> };
   advancedAnalysis?: AdvancedAnalysis;
   ai_score?: number;
   ai_grade?: string;
@@ -120,9 +120,9 @@ export function useDevAnalyzer() {
     setLoading(true); setError(null); clearAllData();
     try {
       const response = await fetch(WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: username.trim().toLowerCase() }) });
-      if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error((e as any).error || `HTTP ${response.status}`); }
+      if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error((e as Record<string, unknown>)?.error as string | undefined || `HTTP ${response.status}`); }
       setData(await response.json());
-    } catch (err: any) { setError(err.message || 'Failed to analyze'); } finally { setLoading(false); }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to analyze'); } finally { setLoading(false); }
   }, []);
 
   const analyzeRepo = useCallback(async (repo: string) => {
@@ -130,9 +130,9 @@ export function useDevAnalyzer() {
     setLoading(true); setError(null); clearAllData();
     try {
       const response = await fetch(ANALYZE_REPO_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ repo: repo.trim().toLowerCase() }) });
-      if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error((e as any).error || `HTTP ${response.status}`); }
+      if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error((e as Record<string, unknown>)?.error as string | undefined || `HTTP ${response.status}`); }
       setRepoData(await response.json());
-    } catch (err: any) { setError(err.message || 'Failed to analyze repo'); } finally { setLoading(false); }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to analyze repo'); } finally { setLoading(false); }
   }, []);
 
   const compareRepos = useCallback(async (repo1: string, repo2: string) => {
@@ -140,9 +140,9 @@ export function useDevAnalyzer() {
     setLoading(true); setError(null); clearAllData();
     try {
       const response = await fetch(COMPARE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ repo1, repo2 }) });
-      if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error((e as any).error || `HTTP ${response.status}`); }
+      if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error((e as Record<string, unknown>)?.error as string | undefined || `HTTP ${response.status}`); }
       setCompareData(await response.json());
-    } catch (err: any) { setError(err.message || 'Failed to compare repos'); } finally { setLoading(false); }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to compare repos'); } finally { setLoading(false); }
   }, []);
 
   const compareDevs = useCallback(async (dev1: string, dev2: string) => {
@@ -150,9 +150,9 @@ export function useDevAnalyzer() {
     setLoading(true); setError(null); clearAllData();
     try {
       const response = await fetch(COMPARE_DEVS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dev1, dev2 }) });
-      if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error((e as any).error || `HTTP ${response.status}`); }
+      if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error((e as Record<string, unknown>)?.error as string | undefined || `HTTP ${response.status}`); }
       setCompareDevsData(await response.json());
-    } catch (err: any) { setError(err.message || 'Failed to compare devs'); } finally { setLoading(false); }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to compare devs'); } finally { setLoading(false); }
   }, []);
 
   return { analyze, analyzeRepo, compareRepos, compareDevs, loading, error, data, repoData, compareData, compareDevsData };
