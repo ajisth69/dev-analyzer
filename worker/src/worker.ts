@@ -40,16 +40,16 @@ export interface Env {
   ALLOWED_ORIGINS?: string;
 }
 
-const MAX_FILE_BYTES = 5_000_000;
+const MAX_FILE_BYTES = 150_000;
 const PROFILE_REPO_PAGE_SIZE = 100;
-const PROFILE_GRAPHQL_PAGE_LIMIT = 999;
-const PROFILE_EVIDENCE_REPO_LIMIT = 999;
-const CLOUDFLARE_SAFE_FETCH_BUDGET = 999999;
-const PROFILE_EVIDENCE_FILES_PER_REPO = 100;
-const BATTLE_EVIDENCE_FILES_PER_REPO = 100;
-const REPO_EVIDENCE_FILE_LIMIT = 1000;
-const COMPACT_REPO_EVIDENCE_FILE_LIMIT = 500;
-const DEPS_DEV_FETCH_LIMIT = 100;
+const PROFILE_GRAPHQL_PAGE_LIMIT = 50;
+const PROFILE_EVIDENCE_REPO_LIMIT = 10;
+const CLOUDFLARE_SAFE_FETCH_BUDGET = 500;
+const PROFILE_EVIDENCE_FILES_PER_REPO = 10;
+const BATTLE_EVIDENCE_FILES_PER_REPO = 8;
+const REPO_EVIDENCE_FILE_LIMIT = 30;
+const COMPACT_REPO_EVIDENCE_FILE_LIMIT = 10;
+const DEPS_DEV_FETCH_LIMIT = 10;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -408,7 +408,7 @@ function osvSeverity(vuln: OsvVulnerability): "critical" | "high" | "medium" | "
 }
 
 async function fetchOsvSignals(queries: DependencyQuery[], budget: FetchBudget): Promise<ExternalDependencySignal[]> {
-  const versioned = queries.filter((query) => query.version).slice(0, 80);
+  const versioned = queries.filter((query) => query.version).slice(0, 500);
   if (versioned.length === 0) return [];
   try {
     const response = await budgetedFetch(budget, "https://api.osv.dev/v1/querybatch", {
@@ -428,7 +428,7 @@ async function fetchOsvSignals(queries: DependencyQuery[], budget: FetchBudget):
     payload.results?.forEach((result, index) => {
       const query = versioned[index];
       for (const vuln of result.vulns || []) {
-        if (signals.length >= 99999) return;
+        if (signals.length >= 500) return;
         signals.push({
           ecosystem: query.ecosystem,
           packageName: query.packageName,
@@ -499,7 +499,7 @@ async function fetchDepsDevSignals(queries: DependencyQuery[], budget: FetchBudg
       // deps.dev enrichment is best effort.
     }
   }));
-  return signals.slice(0, 9999);
+  return signals.slice(0, 100);
 }
 
 async function fetchScorecardSignals(owner: string, repoName: string, budget: FetchBudget): Promise<ExternalRepoSignal[]> {
@@ -521,7 +521,7 @@ async function fetchScorecardSignals(owner: string, repoName: string, budget: Fe
         recommendation: "Improve branch protection, dependency update automation, token permissions, pinned actions, and security policy coverage.",
       });
     }
-    for (const check of (payload.checks || []).filter((item) => typeof item.score === "number" && item.score < 4).slice(0, 99)) {
+    for (const check of (payload.checks || []).filter((item) => typeof item.score === "number" && item.score < 4).slice(0, 20)) {
       signals.push({
         source: "scorecard",
         title: `OpenSSF weak check: ${check.name || "unknown"}`,
@@ -545,7 +545,7 @@ async function buildExternalSignals(owner: string, repoNames: string[], files: F
     fetchDepsDevSignals(dependencyQueries, budget),
   ]);
 
-  const scorecardRepos = repoNames.slice(0, Math.min(9999, remainingFetches(budget)));
+  const scorecardRepos = repoNames.slice(0, Math.min(6, remainingFetches(budget)));
   const scorecardResults = await Promise.all(scorecardRepos.map((repoName) => fetchScorecardSignals(owner, repoName, budget)));
 
   const repoSignals = scorecardResults.flat();
@@ -722,7 +722,7 @@ function buildAIPayload(payload: any): any {
     trimmed.securityScore = payload.advancedAnalysis.securityScore;
     trimmed.confidence = payload.advancedAnalysis.confidence;
     if (payload.advancedAnalysis.severityCounts) trimmed.severityCounts = payload.advancedAnalysis.severityCounts;
-    if (payload.advancedAnalysis.languageDistribution) trimmed.languages = payload.advancedAnalysis.languageDistribution.slice(0, 100).map((l: any) => `${l.name}:${l.pct}%`);
+    if (payload.advancedAnalysis.languageDistribution) trimmed.languages = payload.advancedAnalysis.languageDistribution.slice(0, 25).map((l: any) => `${l.name}:${l.pct}%`);
   }
   if (payload.contributions) {
     trimmed.contributions = payload.contributions;
@@ -731,7 +731,7 @@ function buildAIPayload(payload: any): any {
     trimmed.profileDetails = payload.profileDetails;
   }
   if (payload.maturityAnalysis) {
-    trimmed.maturitySummary = payload.maturityAnalysis.summary?.slice(0, 50000);
+    trimmed.maturitySummary = payload.maturityAnalysis.summary?.slice(0, 2000);
   }
   return trimmed;
 }
