@@ -42,7 +42,7 @@ export interface Env {
 
 const MAX_FILE_BYTES = 85_000;
 const PROFILE_REPO_PAGE_SIZE = 100;
-const PROFILE_GRAPHQL_PAGE_LIMIT = 1;
+const PROFILE_GRAPHQL_PAGE_LIMIT = 50;
 const PROFILE_EVIDENCE_REPO_LIMIT = 3;
 const CLOUDFLARE_SAFE_FETCH_BUDGET = 200;
 const PROFILE_EVIDENCE_FILES_PER_REPO = 6;
@@ -633,7 +633,7 @@ async function processUser(username: string, env: Env, budget: FetchBudget, batt
     maturityAnalysis,
     analyzedReposCount,
     advancedAnalysis,
-    repos: repos.slice(0, 15).map((r: { name: string; stargazers_count?: number; forks_count?: number; description?: string | null }) => ({ name: r.name, stars: r.stargazers_count || 0, forks: r.forks_count || 0, description: r.description || '' })),
+    repos: repos.slice(0, 15).map(r => ({ name: r.name, stars: r.stargazers_count || 0, forks: r.forks_count || 0, description: r.description || '' })),
     followers,
     contributions: graphqlProfile?.contributions || null,
     profileDetails: graphqlProfile?.profileDetails || null,
