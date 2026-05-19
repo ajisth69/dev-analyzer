@@ -486,10 +486,15 @@ async function fetchScorecardSignals(owner: string, repoName: string, budget: Fe
 
 async function buildExternalSignals(owner: string, repoNames: string[], files: FileSignal[], budget: FetchBudget): Promise<ExternalAnalysisSignals> {
   const dependencyQueries = collectDependencyQueries(files);
-  const osvSignals = await fetchOsvSignals(dependencyQueries, budget);
-  const depsDevSignals = await fetchDepsDevSignals(dependencyQueries, budget);
+
+  const [osvSignals, depsDevSignals] = await Promise.all([
+    fetchOsvSignals(dependencyQueries, budget),
+    fetchDepsDevSignals(dependencyQueries, budget),
+  ]);
+
   const scorecardRepos = repoNames.slice(0, Math.min(3, remainingFetches(budget)));
   const scorecardResults = await Promise.all(scorecardRepos.map((repoName) => fetchScorecardSignals(owner, repoName, budget)));
+
   const repoSignals = scorecardResults.flat();
   const sources = [
     "GitHub GraphQL",
@@ -525,11 +530,10 @@ async function processUser(username: string, env: Env, budget: FetchBudget, batt
       ? 5
       : Math.max(1, Math.min(Number(env.LANGUAGE_REPO_LIMIT || "15") || 15, 15));
     const languageRepos = repos.slice(0, languageLimit);
-    languagesArray = [];
-    for (const repo of languageRepos) {
-      const lang = await fetchGithubAPI(repo.languages_url, env, budget);
-      if (lang) languagesArray.push(lang as RepoLanguageStats);
-    }
+    const languagesArrayResults = await Promise.all(
+      languageRepos.map(repo => fetchGithubAPI(repo.languages_url, env, budget))
+    );
+    languagesArray = languagesArrayResults.filter(Boolean) as RepoLanguageStats[];
     followers = (userProfile as any)?.followers || 0;
     analyzedReposCount = repos.length;
   }
@@ -539,17 +543,16 @@ async function processUser(username: string, env: Env, budget: FetchBudget, batt
   const devIq = calculateDevIQ(repos, languagesArray, followers);
   const languageProfile = buildLanguageProfile(languagesArray);
   const languageTags = languageProfile.languageTags.map((tag) => `${tag} Dev`);
-  let repoFiles: FileSignal[] = [];
+  const evidenceResults = await Promise.all(
+    topRepos.map(async (repo) => {
+      const defaultBranch = repo.default_branch || "main";
+      const maxFiles = battleMode ? BATTLE_EVIDENCE_FILES_PER_REPO : PROFILE_EVIDENCE_FILES_PER_REPO;
+      const evidence = await fetchRepoEvidence(username, repo.name, defaultBranch, env, budget, true, maxFiles);
+      return evidence.map((file) => ({ ...file, name: `${repo.name}/${file.name}` }));
+    })
+  );
 
-  for (const repo of topRepos) {
-    const defaultBranch = repo.default_branch || "main";
-    const maxFiles = battleMode ? BATTLE_EVIDENCE_FILES_PER_REPO : PROFILE_EVIDENCE_FILES_PER_REPO;
-    const evidence = await fetchRepoEvidence(username, repo.name, defaultBranch, env, budget, true, maxFiles);
-    repoFiles = [
-      ...repoFiles,
-      ...evidence.map((file) => ({ ...file, name: `${repo.name}/${file.name}` })),
-    ];
-  }
+  const repoFiles: FileSignal[] = evidenceResults.flat();
   const externalSignals = await buildExternalSignals(username, topRepos.map((repo) => repo.name), repoFiles, budget);
 
   const advancedAnalysis = buildAdvancedAnalysis({
