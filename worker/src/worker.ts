@@ -168,6 +168,28 @@ interface GithubGraphqlRepo {
   repositoryTopics?: { nodes?: Array<{ topic?: { name?: string } }> };
 }
 
+export interface GithubProfileContributions {
+  totalCommits: number;
+  totalPRs: number;
+  restrictedCommits: number;
+  calendarTotal: number;
+}
+
+export interface GithubProfileDetails {
+  name: string | null;
+  bio: string | null;
+  company: string | null;
+  location: string | null;
+  websiteUrl: string | null;
+  twitterUsername: string | null;
+  isHireable: boolean;
+  createdAt: string | null;
+  status: { message: string | null | undefined; emoji: string | null | undefined } | null;
+  pinnedItemsCount: number;
+  organizationsCount: number;
+  gistsCount: number;
+}
+
 interface GithubGraphqlProfile {
   user?: {
     login: string;
@@ -288,8 +310,8 @@ async function fetchUserGraphql(username: string, env: Env, budget: FetchBudget)
   let totalRepos = 0;
   const allRepoNodes: GithubGraphqlRepo[] = [];
   let pagesFetched = 0;
-  let contributions: any = null;
-  let profileDetails: any = null;
+  let contributions: GithubProfileContributions | null = null;
+  let profileDetails: GithubProfileDetails | null = null;
 
   do {
     pagesFetched += 1;
