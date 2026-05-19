@@ -20,6 +20,18 @@ import {
   targetFilesForMode,
 } from "./analysisCore";
 
+interface OsvVulnerability {
+  id?: string;
+  summary?: string;
+  database_specific?: {
+    severity?: string;
+  };
+  severity?: Array<{
+    type: string;
+    score: string;
+  }>;
+}
+
 export interface Env {
   GITHUB_PAT: string;
   GROQ_API_KEY?: string;
@@ -345,8 +357,8 @@ async function fetchRepoEvidence(owner: string, repoName: string, defaultBranch:
   return results.filter((result): result is FileSignal => Boolean(result));
 }
 
-function osvSeverity(vuln: any): "critical" | "high" | "medium" | "low" {
-  const text = `${vuln?.database_specific?.severity || ""} ${vuln?.severity?.map((item: any) => `${item.type}:${item.score}`).join(" ") || ""}`.toLowerCase();
+function osvSeverity(vuln: OsvVulnerability): "critical" | "high" | "medium" | "low" {
+  const text = `${vuln?.database_specific?.severity || ""} ${vuln?.severity?.map((item) => `${item.type}:${item.score}`).join(" ") || ""}`.toLowerCase();
   const cvss = text.match(/(\d+(?:\.\d+)?)/g)?.map(Number).sort((a, b) => b - a)[0] || 0;
   if (text.includes("critical") || cvss >= 9) return "critical";
   if (text.includes("high") || cvss >= 7) return "high";
@@ -370,7 +382,7 @@ async function fetchOsvSignals(queries: DependencyQuery[], budget: FetchBudget):
     }, true);
     if (!response) return [];
     if (!response.ok) return [];
-    const payload = await response.json() as { results?: Array<{ vulns?: any[] }> };
+    const payload = await response.json() as { results?: Array<{ vulns?: OsvVulnerability[] }> };
     const signals: ExternalDependencySignal[] = [];
     payload.results?.forEach((result, index) => {
       const query = versioned[index];
