@@ -1,4 +1,4 @@
-## 2024-05-18 - Prevent Error Detail Leakage
-**Vulnerability:** The global Cloudflare Worker try/catch block returned raw `error.message` strings directly to the client in a 500 status response (`{ error: error.message }`).
-**Learning:** Returning unhandled runtime exceptions directly to the frontend can inadvertently expose sensitive configuration data, like missing environment variables (e.g., `GITHUB_PAT environment variable is not set`), API key details, or internal application state, giving attackers reconnaissance data.
-**Prevention:** Catch all unhandled exceptions globally, log them securely on the server (`console.error`), and return a sanitized, generic error message (e.g., `"An internal server error occurred"`) to the client.
+## 2025-05-19 - Overly Permissive Dynamic CORS Origin
+**Vulnerability:** The API dynamically echoed any incoming `Origin` header in the `Access-Control-Allow-Origin` response header, effectively bypassing CORS protections.
+**Learning:** This existed because developers often try to support multiple frontend deployments (like Vercel previews) by dynamically reflecting origins without proper whitelisting.
+**Prevention:** Always validate incoming origins against an explicit whitelist of allowed domains (e.g., via environment variables). If no whitelist is configured, default to a safe static value like `*` (which prevents credentialed requests) rather than dynamic reflection.

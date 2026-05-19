@@ -11,6 +11,7 @@ export default async function handler(request: Request) {
     GITHUB_PAT: process.env.GITHUB_PAT || '',
     GROQ_API_KEY: process.env.GROQ_API_KEY || '',
     LANGUAGE_REPO_LIMIT: process.env.LANGUAGE_REPO_LIMIT || '8',
+    ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || '',
   };
 
   return workerModule.fetch(
