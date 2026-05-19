@@ -1129,7 +1129,26 @@ function buildDependencyAudit(files: FileSignal[], fileSignals: FileSignals, ext
   return { risks, counts, score };
 }
 
-function buildArchitectureAudit(files: FileSignal[], fileSignals: FileSignals, securityScore: number, dependencyScore: number) {
+interface ArchitectureStats {
+  sourceFiles: FileSignal[];
+  sourceLineCounts: number[];
+  totalSourceLines: number;
+  longFiles: FileSignal[];
+  veryLongFiles: FileSignal[];
+  allContent: string;
+  todoCount: number;
+  eslintDisableCount: number;
+  anyCount: number;
+  consoleCount: number;
+  emptyCatchCount: number;
+  hasLayeredDirs: boolean;
+  hasStrictTs: boolean;
+  hasErrorHandling: boolean;
+  hasObservability: boolean;
+  hasHealthcheck: boolean;
+}
+
+function getArchitectureStats(files: FileSignal[]): ArchitectureStats {
   const sourceFiles = files.filter(isSourceFile);
   const sourceLineCounts = sourceFiles.map((file) => file.content.split(/\r?\n/).length);
   const totalSourceLines = sourceLineCounts.reduce((sum, count) => sum + count, 0);
@@ -1146,6 +1165,43 @@ function buildArchitectureAudit(files: FileSignal[], fileSignals: FileSignals, s
   const hasErrorHandling = /try\s*{|catch\s*(?:\(|{)|Result<|Option<|\bexcept\b|\braise\b|panic!/i.test(allContent);
   const hasObservability = /logger|winston|pino|sentry|opentelemetry|prometheus|console\.error|tracing/i.test(allContent);
   const hasHealthcheck = /healthcheck|\/health|readiness|liveness/i.test(allContent);
+
+  return {
+    sourceFiles,
+    sourceLineCounts,
+    totalSourceLines,
+    longFiles,
+    veryLongFiles,
+    allContent,
+    todoCount,
+    eslintDisableCount,
+    anyCount,
+    consoleCount,
+    emptyCatchCount,
+    hasLayeredDirs,
+    hasStrictTs,
+    hasErrorHandling,
+    hasObservability,
+    hasHealthcheck,
+  };
+}
+
+function calculateArchitectureScores(stats: ArchitectureStats, fileSignals: FileSignals, securityScore: number, dependencyScore: number) {
+  const {
+    sourceFiles,
+    longFiles,
+    veryLongFiles,
+    allContent,
+    todoCount,
+    eslintDisableCount,
+    anyCount,
+    emptyCatchCount,
+    hasLayeredDirs,
+    hasStrictTs,
+    hasErrorHandling,
+    hasObservability,
+    hasHealthcheck,
+  } = stats;
 
   const maintainability = clamp(
     68
@@ -1207,43 +1263,53 @@ function buildArchitectureAudit(files: FileSignal[], fileSignals: FileSignals, s
     + dependencyScore * 0.06,
   );
 
-  const architectureFindings: InsightItem[] = [
-    hasLayeredDirs ? { title: "Layering signal present", detail: "The scanned paths suggest separated routes/services/components or domain modules.", impact: "Low" } : { title: "Layering not obvious", detail: "The scanned files do not clearly show separated modules for routing, business logic, persistence, and shared utilities.", impact: "Medium" },
+  return { maintainability, architecture, testing, modernity, production };
+}
+
+function buildArchitectureFindings(stats: ArchitectureStats, fileSignals: FileSignals): InsightItem[] {
+  return [
+    stats.hasLayeredDirs ? { title: "Layering signal present", detail: "The scanned paths suggest separated routes/services/components or domain modules.", impact: "Low" } : { title: "Layering not obvious", detail: "The scanned files do not clearly show separated modules for routing, business logic, persistence, and shared utilities.", impact: "Medium" },
     fileSignals.hasValidation ? { title: "Input validation signal present", detail: "A validation library or validation convention was detected.", impact: "Low" } : { title: "Validation boundary missing", detail: "No clear validation library or boundary pattern was detected in scanned evidence.", impact: "High" },
-    hasErrorHandling ? { title: "Error handling visible", detail: "The code has explicit exception/result handling signals.", impact: "Low" } : { title: "Error handling not visible", detail: "Scanned evidence did not show meaningful error handling patterns.", impact: "Medium" },
+    stats.hasErrorHandling ? { title: "Error handling visible", detail: "The code has explicit exception/result handling signals.", impact: "Low" } : { title: "Error handling not visible", detail: "Scanned evidence did not show meaningful error handling patterns.", impact: "Medium" },
   ];
+}
 
+function buildCodeSmellCandidates(stats: ArchitectureStats): InsightItem[] {
   const codeSmellCandidates: Array<InsightItem | null> = [
-    longFiles.length > 0 ? { title: "Large files detected", detail: `${longFiles.length} scanned source file(s) exceed 420 lines, which can hide responsibilities and review risk.`, impact: longFiles.length > 2 ? "High" : "Medium" } : null,
-    anyCount > 6 ? { title: "Loose typing detected", detail: `${anyCount} loose typing markers were found across scanned files.`, impact: "Medium" } : null,
-    eslintDisableCount > 3 ? { title: "Quality gates bypassed", detail: `${eslintDisableCount} lint/type suppression marker(s) were found.`, impact: "Medium" } : null,
-    emptyCatchCount > 0 ? { title: "Swallowed errors", detail: `${emptyCatchCount} empty catch block(s) were found.`, impact: "High" } : null,
-    consoleCount > 12 ? { title: "Console logging noise", detail: `${consoleCount} console logging call(s) were found in scanned files.`, impact: "Low" } : null,
-    todoCount > 12 ? { title: "High unresolved marker count", detail: `${todoCount} TODO/FIXME/HACK marker(s) were found.`, impact: "Low" } : null,
+    stats.longFiles.length > 0 ? { title: "Large files detected", detail: `${stats.longFiles.length} scanned source file(s) exceed 420 lines, which can hide responsibilities and review risk.`, impact: stats.longFiles.length > 2 ? "High" : "Medium" } : null,
+    stats.anyCount > 6 ? { title: "Loose typing detected", detail: `${stats.anyCount} loose typing markers were found across scanned files.`, impact: "Medium" } : null,
+    stats.eslintDisableCount > 3 ? { title: "Quality gates bypassed", detail: `${stats.eslintDisableCount} lint/type suppression marker(s) were found.`, impact: "Medium" } : null,
+    stats.emptyCatchCount > 0 ? { title: "Swallowed errors", detail: `${stats.emptyCatchCount} empty catch block(s) were found.`, impact: "High" } : null,
+    stats.consoleCount > 12 ? { title: "Console logging noise", detail: `${stats.consoleCount} console logging call(s) were found in scanned files.`, impact: "Low" } : null,
+    stats.todoCount > 12 ? { title: "High unresolved marker count", detail: `${stats.todoCount} TODO/FIXME/HACK marker(s) were found.`, impact: "Low" } : null,
   ];
-  const codeSmells = codeSmellCandidates.filter((item): item is InsightItem => Boolean(item));
+  return codeSmellCandidates.filter((item): item is InsightItem => Boolean(item));
+}
 
-  const testQuality = {
-    score: testing,
+function buildTestQualityData(testingScore: number, fileSignals: FileSignals, stats: ArchitectureStats) {
+  return {
+    score: testingScore,
     evidence: [
       fileSignals.hasTests ? `${fileSignals.testFileCount || "Script-level"} test signal detected` : "No test signal detected",
       fileSignals.hasCI ? "CI can run automated checks" : "No CI workflow scanned",
-      /coverage|nyc|c8|pytest-cov|jacoco|lcov/i.test(allContent) ? "Coverage tooling visible" : "Coverage tooling not obvious",
+      /coverage|nyc|c8|pytest-cov|jacoco|lcov/i.test(stats.allContent) ? "Coverage tooling visible" : "Coverage tooling not obvious",
     ],
     gaps: [
       !fileSignals.hasTests ? "Add unit/integration tests around core behavior." : "",
       !fileSignals.hasCI ? "Run tests and type/lint checks in CI." : "",
-      !/coverage|nyc|c8|pytest-cov|jacoco|lcov/i.test(allContent) ? "Expose coverage command or report." : "",
+      !/coverage|nyc|c8|pytest-cov|jacoco|lcov/i.test(stats.allContent) ? "Expose coverage command or report." : "",
     ].filter(Boolean),
   };
+}
 
-  const productionReadiness = {
-    score: production,
+function buildProductionReadinessData(productionScore: number, fileSignals: FileSignals, securityScore: number, dependencyScore: number, stats: ArchitectureStats) {
+  return {
+    score: productionScore,
     evidence: [
       fileSignals.hasBuild ? "Build command visible" : "No build command scanned",
       fileSignals.hasDocker ? "Containerization visible" : "No containerization scanned",
       fileSignals.hasEnvExample ? "Environment configuration pattern visible" : "Environment setup not obvious",
-      hasObservability ? "Logging/observability signal visible" : "Observability not obvious",
+      stats.hasObservability ? "Logging/observability signal visible" : "Observability not obvious",
     ],
     blockers: [
       securityScore < 70 ? "Security findings block production confidence." : "",
@@ -1252,26 +1318,35 @@ function buildArchitectureAudit(files: FileSignal[], fileSignals: FileSignals, s
       !fileSignals.hasEnvExample ? "Runtime configuration contract is unclear." : "",
     ].filter(Boolean),
   };
+}
+
+function buildArchitectureAudit(files: FileSignal[], fileSignals: FileSignals, securityScore: number, dependencyScore: number) {
+  const stats = getArchitectureStats(files);
+  const scores = calculateArchitectureScores(stats, fileSignals, securityScore, dependencyScore);
+  const architectureFindings = buildArchitectureFindings(stats, fileSignals);
+  const codeSmells = buildCodeSmellCandidates(stats);
+  const testQuality = buildTestQualityData(scores.testing, fileSignals, stats);
+  const productionReadiness = buildProductionReadinessData(scores.production, fileSignals, securityScore, dependencyScore, stats);
 
   return {
-    architecture,
-    maintainability,
-    testing,
-    modernity,
-    production,
+    architecture: scores.architecture,
+    maintainability: scores.maintainability,
+    testing: scores.testing,
+    modernity: scores.modernity,
+    production: scores.production,
     architectureFindings,
     codeSmells,
     testQuality,
     productionReadiness,
     stats: {
-      totalSourceLines,
-      sourceFiles: sourceFiles.length,
-      longFiles: longFiles.length,
-      veryLongFiles: veryLongFiles.length,
-      anyCount,
-      eslintDisableCount,
-      todoCount,
-      emptyCatchCount,
+      totalSourceLines: stats.totalSourceLines,
+      sourceFiles: stats.sourceFiles.length,
+      longFiles: stats.longFiles.length,
+      veryLongFiles: stats.veryLongFiles.length,
+      anyCount: stats.anyCount,
+      eslintDisableCount: stats.eslintDisableCount,
+      todoCount: stats.todoCount,
+      emptyCatchCount: stats.emptyCatchCount,
     },
   };
 }
