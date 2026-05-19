@@ -14,8 +14,15 @@ interface RadarChartProps {
   };
 }
 
+interface ChartDataPoint {
+  subject: string;
+  A: number;
+  B?: number;
+  fullMark: number;
+}
+
 export const DevRadarChart: React.FC<RadarChartProps> = ({ data, compareData }) => {
-  let chartData: any[] = [];
+  let chartData: ChartDataPoint[] = [];
 
   if (compareData) {
     const metricOrder = ['Logic', 'Security', 'Architecture', 'Testing', 'Dependencies', 'Production', 'Documentation', 'Popularity'];
