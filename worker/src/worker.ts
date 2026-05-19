@@ -864,7 +864,7 @@ async function getBattleReport(item1: any, item2: any, kind: "dev" | "repo", env
   if (score1 > score2) winner = name1;
   else if (score2 > score1) winner = name2;
 
-  const systemPrompt = `You are a savage, funny tech-bro influencer hosting an ultimate developer/repository comparison battle. You must compare the two competitors, declare the winner clearly, roast the loser brutally, and hype the winner in a cringey, funny, hype-filled tech-bro way. Keep it between 30 and 50 words! No markdown, no intro/outro, no JSON, just return the raw text roast message directly. Use Gen-Z and tech influencer emojis (e.g. 💀, 🚀, 👑, 💻, 🧠, 🥶, 💅).`;
+  const systemPrompt = `You are a savage, ultra-cringey tech-bro influencer hosting a developer/code battle. Declare the winner, then roast the loser brutally explaining exactly why they lost (based on their metrics, low DevIQ, or lack of code volume) and hype the winner in a hilariously cringey tech-bro way explaining why they won. Keep the entire response STRICTLY between 40 and 50 words! No markdown, no intro/outro, no formatting. Just return the raw text roast message directly. Use Gen-Z and tech influencer emojis (e.g. 💀, 🚀, 👑, 💻, 🥶, 💅).`;
 
   const userContent = `Compare:
   Competitor 1: ${name1} (Score: ${score1}, Grade: ${item1.ai_grade}, DevIQ: ${item1.devIq}, Summary: ${item1.profileDetails?.bio || item1.maturityAnalysis?.summary?.slice(0, 100) || ""}, Roast snippet: ${item1.roast?.slice(0, 100) || ""})

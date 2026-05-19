@@ -25,7 +25,7 @@ function AIDeclarationReport({ report, winnerName }: { report?: string; winnerNa
         <div className="space-y-2 text-center md:text-left">
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] px-2.5 py-1 rounded-md bg-amber-500/25 text-amber-300 border border-amber-500/30">
-              AI Champion Declaration
+              Engine Champion Declaration
             </span>
             {winnerName !== 'Tie' && (
               <span className="text-[10px] font-black uppercase tracking-[0.2em] px-2.5 py-1 rounded-md bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 animate-pulse">
