@@ -33,3 +33,4 @@ worker/dist/
 # OS Files
 .DS_Store
 Thumbs.db
+coverage/
