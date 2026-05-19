@@ -397,6 +397,7 @@ async function fetchRepoEvidence(owner: string, repoName: string, defaultBranch:
   return results.filter((result): result is FileSignal => Boolean(result));
 }
 
+
 function osvSeverity(vuln: OsvVulnerability): "critical" | "high" | "medium" | "low" {
   const text = `${vuln?.database_specific?.severity || ""} ${vuln?.severity?.map((item) => `${item.type}:${item.score}`).join(" ") || ""}`.toLowerCase();
   const cvss = text.match(/(\d+(?:\.\d+)?)/g)?.map(Number).sort((a, b) => b - a)[0] || 0;
