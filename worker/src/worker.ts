@@ -848,13 +848,65 @@ CRITICAL RULES:
       console.error(`[GROQ MODEL ERROR] Error during ${model} run: ${err.message}`);
     }
   }
-
   return {};
+}
+
+async function getBattleReport(item1: any, item2: any, kind: "dev" | "repo", env: Env): Promise<string> {
+  const apiKey = env.GROQ_API_KEY;
+  if (!apiKey) return "AI battle declaration failed. Both competitors remain locked in an eternal infinite loop.";
+
+  const name1 = kind === "dev" ? `@${item1.username}` : `${item1.owner}/${item1.repoName}`;
+  const name2 = kind === "dev" ? `@${item2.username}` : `${item2.owner}/${item2.repoName}`;
+
+  const score1 = item1.ai_score || 0;
+  const score2 = item2.ai_score || 0;
+  let winner = "Tie";
+  if (score1 > score2) winner = name1;
+  else if (score2 > score1) winner = name2;
+
+  const systemPrompt = `You are a savage, funny tech-bro influencer hosting an ultimate developer/repository comparison battle. You must compare the two competitors, declare the winner clearly, roast the loser brutally, and hype the winner in a cringey, funny, hype-filled tech-bro way. Keep it between 30 and 50 words! No markdown, no intro/outro, no JSON, just return the raw text roast message directly. Use Gen-Z and tech influencer emojis (e.g. 💀, 🚀, 👑, 💻, 🧠, 🥶, 💅).`;
+
+  const userContent = `Compare:
+  Competitor 1: ${name1} (Score: ${score1}, Grade: ${item1.ai_grade}, DevIQ: ${item1.devIq}, Summary: ${item1.profileDetails?.bio || item1.maturityAnalysis?.summary?.slice(0, 100) || ""}, Roast snippet: ${item1.roast?.slice(0, 100) || ""})
+  Competitor 2: ${name2} (Score: ${score2}, Grade: ${item2.ai_grade}, DevIQ: ${item2.devIq}, Summary: ${item2.profileDetails?.bio || item2.maturityAnalysis?.summary?.slice(0, 100) || ""}, Roast snippet: ${item2.roast?.slice(0, 100) || ""})
+  Declared Winner: ${winner}`;
+
+  const models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it"];
+
+  for (const model of models) {
+    try {
+      const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userContent },
+          ],
+          temperature: 0.9,
+          max_completion_tokens: 300,
+          top_p: 1,
+          stream: false,
+        }),
+      });
+
+      if (resp.ok) {
+        const data = await resp.json() as any;
+        const content = data.choices?.[0]?.message?.content?.trim() ?? "";
+        if (content) return content;
+      }
+    } catch {
+      // fallback
+    }
+  }
+
+  return `${winner} absolutely demolished the competition! The loser gets a career pivot into writing manual Excel spreadsheets. 💀🚀`;
 }
 
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
-    const origin = request.headers.get("Origin");
+    const origin = request.url ? new URL(request.url).origin : null;
 
     if (request.method === "OPTIONS") {
       const allowedOrigin = validateOrigin(origin, env);
@@ -888,7 +940,8 @@ export default {
           processUser(body.dev1.trim().toLowerCase(), env, createFetchBudget(), true),
           processUser(body.dev2.trim().toLowerCase(), env, createFetchBudget(), true)
         ]);
-        return new Response(JSON.stringify({ dev1: dev1Data, dev2: dev2Data }), { headers: responseHeaders(origin, env) });
+        const battle_report = await getBattleReport(dev1Data, dev2Data, "dev", env);
+        return new Response(JSON.stringify({ dev1: dev1Data, dev2: dev2Data, battle_report }), { headers: responseHeaders(origin, env) });
       }
 
       if (url.pathname === "/api/analyze-repo" && request.method === "POST") {
@@ -922,7 +975,8 @@ export default {
           processRepo(owner1.toLowerCase(), name1.toLowerCase(), env, budget, true),
           processRepo(owner2.toLowerCase(), name2.toLowerCase(), env, budget, true),
         ]);
-        return new Response(JSON.stringify({ repo1: repo1Data, repo2: repo2Data }), { headers: responseHeaders(origin, env) });
+        const battle_report = await getBattleReport(repo1Data, repo2Data, "repo", env);
+        return new Response(JSON.stringify({ repo1: repo1Data, repo2: repo2Data, battle_report }), { headers: responseHeaders(origin, env) });
       }
 
       return new Response("Not Found", { status: 404, headers: CORS_HEADERS });

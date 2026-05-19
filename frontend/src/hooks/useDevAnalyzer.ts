@@ -97,8 +97,8 @@ export interface RepoAnalysisResponse {
   top_repos_analysis?: AIRepoAnalysis[];
 }
 
-export interface CompareResponse { repo1: RepoAnalysisResponse; repo2: RepoAnalysisResponse; }
-export interface CompareDevsResponse { dev1: AnalyzerResponse; dev2: AnalyzerResponse; }
+export interface CompareResponse { repo1: RepoAnalysisResponse; repo2: RepoAnalysisResponse; battle_report?: string; }
+export interface CompareDevsResponse { dev1: AnalyzerResponse; dev2: AnalyzerResponse; battle_report?: string; }
 
 const WORKER_URL = '/api/analyze';
 const ANALYZE_REPO_URL = '/api/analyze-repo';
