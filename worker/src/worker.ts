@@ -9,6 +9,7 @@ import {
   ExternalDependencySignal,
   ExternalRepoSignal,
   FileSignal,
+  NormalizedRepo,
   RepoLanguageStats,
   TreeItem,
   buildAdvancedAnalysis,
@@ -253,7 +254,7 @@ query DevAnalyzerProfile($login: String!, $repoCount: Int!, $cursor: String) {
   }
 }`;
 
-function repoFromGraphql(repo: GithubGraphqlRepo) {
+function repoFromGraphql(repo: GithubGraphqlRepo): NormalizedRepo {
   return {
     name: repo.name,
     full_name: repo.nameWithOwner,
@@ -268,7 +269,7 @@ function repoFromGraphql(repo: GithubGraphqlRepo) {
     archived: repo.isArchived,
     fork: repo.isFork,
     description: repo.description,
-    topics: repo.repositoryTopics?.nodes?.map((node) => node.topic?.name).filter(Boolean) || [],
+    topics: (repo.repositoryTopics?.nodes?.map((node) => node.topic?.name).filter(Boolean) as string[]) || [],
   };
 }
 
@@ -542,7 +543,7 @@ async function buildExternalSignals(owner: string, repoNames: string[], files: F
 
 async function processUser(username: string, env: Env, budget: FetchBudget, battleMode = false) {
   const graphqlProfile = await fetchUserGraphql(username, env, budget);
-  let repos: any[] = graphqlProfile?.repos || [];
+  let repos: NormalizedRepo[] = graphqlProfile?.repos || [];
   let languagesArray = graphqlProfile?.languagesArray || [];
   let followers = graphqlProfile?.followers || 0;
   let analyzedReposCount = graphqlProfile?.totalRepos || repos.length;
@@ -552,7 +553,7 @@ async function processUser(username: string, env: Env, budget: FetchBudget, batt
       fetchGithubAPI(`/users/${username}`, env, budget).catch(() => null),
       fetchGithubAPI(`/users/${username}/repos?per_page=100&sort=updated`, env, budget),
     ]);
-    repos = (reposResponse as any[]) || [];
+    repos = (reposResponse as NormalizedRepo[]) || [];
     if (!Array.isArray(repos)) repos = [];
     repos.sort((a, b) => (b.stargazers_count || 0) - (a.stargazers_count || 0));
     const languageLimit = battleMode
@@ -560,7 +561,10 @@ async function processUser(username: string, env: Env, budget: FetchBudget, batt
       : Math.max(1, Math.min(Number(env.LANGUAGE_REPO_LIMIT || "15") || 15, 15));
     const languageRepos = repos.slice(0, languageLimit);
     const languagesArrayResults = await Promise.all(
-      languageRepos.map(repo => fetchGithubAPI(repo.languages_url, env, budget))
+      languageRepos.map(repo => {
+        if (!repo.languages_url) return Promise.resolve(null);
+        return fetchGithubAPI(repo.languages_url, env, budget);
+      })
     );
     languagesArray = languagesArrayResults.filter(Boolean) as RepoLanguageStats[];
     followers = (userProfile as any)?.followers || 0;

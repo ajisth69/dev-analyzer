@@ -1,3 +1,21 @@
+export interface NormalizedRepo {
+  name: string;
+  full_name?: string;
+  default_branch?: string;
+  stargazers_count?: number;
+  forks_count?: number;
+  license?: { spdx_id?: string } | null;
+  created_at?: string | undefined;
+  updated_at?: string | undefined;
+  pushed_at?: string | undefined;
+  open_issues_count?: number;
+  archived?: boolean | undefined;
+  fork?: boolean | undefined;
+  description?: string | null | undefined;
+  topics?: string[];
+  languages_url?: string;
+}
+
 export interface RepoLanguageStats {
   [language: string]: number;
 }
@@ -465,7 +483,7 @@ export function selectEvidencePaths(treeItems: TreeItem[], battleMode = false) {
   return selected.slice(0, limit);
 }
 
-export function calculateDevIQ(repos: any[], languagesArray: RepoLanguageStats[], followers = 0) {
+export function calculateDevIQ(repos: NormalizedRepo[], languagesArray: RepoLanguageStats[], followers = 0) {
   let devIq = 0;
 
   const constants: Record<string, number> = {
@@ -578,7 +596,7 @@ export function calculateDevIQ(repos: any[], languagesArray: RepoLanguageStats[]
 
     if (typeof repo.open_issues_count === "number") {
       const issueRatio = repo.open_issues_count / (repo.stargazers_count || 1);
-      if (issueRatio < 0.1 && repo.stargazers_count > 10) devIq += 300;
+      if (issueRatio < 0.1 && (repo.stargazers_count || 0) > 10) devIq += 300;
     }
   }
 
