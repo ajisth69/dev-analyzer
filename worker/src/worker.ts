@@ -40,16 +40,16 @@ export interface Env {
   ALLOWED_ORIGINS?: string;
 }
 
-const MAX_FILE_BYTES = 85_000;
+const MAX_FILE_BYTES = 5_000_000;
 const PROFILE_REPO_PAGE_SIZE = 100;
-const PROFILE_GRAPHQL_PAGE_LIMIT = 50;
-const PROFILE_EVIDENCE_REPO_LIMIT = 3;
-const CLOUDFLARE_SAFE_FETCH_BUDGET = 200;
-const PROFILE_EVIDENCE_FILES_PER_REPO = 6;
-const BATTLE_EVIDENCE_FILES_PER_REPO = 4;
-const REPO_EVIDENCE_FILE_LIMIT = 20;
-const COMPACT_REPO_EVIDENCE_FILE_LIMIT = 5;
-const DEPS_DEV_FETCH_LIMIT = 4;
+const PROFILE_GRAPHQL_PAGE_LIMIT = 999;
+const PROFILE_EVIDENCE_REPO_LIMIT = 999;
+const CLOUDFLARE_SAFE_FETCH_BUDGET = 999999;
+const PROFILE_EVIDENCE_FILES_PER_REPO = 100;
+const BATTLE_EVIDENCE_FILES_PER_REPO = 100;
+const REPO_EVIDENCE_FILE_LIMIT = 1000;
+const COMPACT_REPO_EVIDENCE_FILE_LIMIT = 500;
+const DEPS_DEV_FETCH_LIMIT = 100;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -428,7 +428,7 @@ async function fetchOsvSignals(queries: DependencyQuery[], budget: FetchBudget):
     payload.results?.forEach((result, index) => {
       const query = versioned[index];
       for (const vuln of result.vulns || []) {
-        if (signals.length >= 60) return;
+        if (signals.length >= 99999) return;
         signals.push({
           ecosystem: query.ecosystem,
           packageName: query.packageName,
@@ -499,7 +499,7 @@ async function fetchDepsDevSignals(queries: DependencyQuery[], budget: FetchBudg
       // deps.dev enrichment is best effort.
     }
   }));
-  return signals.slice(0, 30);
+  return signals.slice(0, 9999);
 }
 
 async function fetchScorecardSignals(owner: string, repoName: string, budget: FetchBudget): Promise<ExternalRepoSignal[]> {
@@ -521,7 +521,7 @@ async function fetchScorecardSignals(owner: string, repoName: string, budget: Fe
         recommendation: "Improve branch protection, dependency update automation, token permissions, pinned actions, and security policy coverage.",
       });
     }
-    for (const check of (payload.checks || []).filter((item) => typeof item.score === "number" && item.score < 4).slice(0, 5)) {
+    for (const check of (payload.checks || []).filter((item) => typeof item.score === "number" && item.score < 4).slice(0, 99)) {
       signals.push({
         source: "scorecard",
         title: `OpenSSF weak check: ${check.name || "unknown"}`,
@@ -545,7 +545,7 @@ async function buildExternalSignals(owner: string, repoNames: string[], files: F
     fetchDepsDevSignals(dependencyQueries, budget),
   ]);
 
-  const scorecardRepos = repoNames.slice(0, Math.min(3, remainingFetches(budget)));
+  const scorecardRepos = repoNames.slice(0, Math.min(9999, remainingFetches(budget)));
   const scorecardResults = await Promise.all(scorecardRepos.map((repoName) => fetchScorecardSignals(owner, repoName, budget)));
 
   const repoSignals = scorecardResults.flat();
@@ -579,10 +579,7 @@ async function processUser(username: string, env: Env, budget: FetchBudget, batt
     repos = (reposResponse as NormalizedRepo[]) || [];
     if (!Array.isArray(repos)) repos = [];
     repos.sort((a, b) => (b.stargazers_count || 0) - (a.stargazers_count || 0));
-    const languageLimit = battleMode
-      ? 5
-      : Math.max(1, Math.min(Number(env.LANGUAGE_REPO_LIMIT || "15") || 15, 15));
-    const languageRepos = repos.slice(0, languageLimit);
+    const languageRepos = repos;
     const languagesArrayResults = await Promise.all(
       languageRepos.map(repo => {
         if (!repo.languages_url) return Promise.resolve(null);
@@ -595,7 +592,7 @@ async function processUser(username: string, env: Env, budget: FetchBudget, batt
   }
 
   repos.sort((a, b) => (b.stargazers_count || 0) - (a.stargazers_count || 0));
-  const topRepos = repos.slice(0, battleMode ? 2 : PROFILE_EVIDENCE_REPO_LIMIT);
+  const topRepos = repos.slice(0, PROFILE_EVIDENCE_REPO_LIMIT);
   const devIq = calculateDevIQ(repos, languagesArray, followers);
   const languageProfile = buildLanguageProfile(languagesArray);
   const languageTags = languageProfile.languageTags.map((tag) => `${tag} Dev`);
@@ -725,7 +722,7 @@ function buildAIPayload(payload: any): any {
     trimmed.securityScore = payload.advancedAnalysis.securityScore;
     trimmed.confidence = payload.advancedAnalysis.confidence;
     if (payload.advancedAnalysis.severityCounts) trimmed.severityCounts = payload.advancedAnalysis.severityCounts;
-    if (payload.advancedAnalysis.languageDistribution) trimmed.languages = payload.advancedAnalysis.languageDistribution.slice(0, 8).map((l: any) => `${l.name}:${l.pct}%`);
+    if (payload.advancedAnalysis.languageDistribution) trimmed.languages = payload.advancedAnalysis.languageDistribution.slice(0, 100).map((l: any) => `${l.name}:${l.pct}%`);
   }
   if (payload.contributions) {
     trimmed.contributions = payload.contributions;
@@ -734,7 +731,7 @@ function buildAIPayload(payload: any): any {
     trimmed.profileDetails = payload.profileDetails;
   }
   if (payload.maturityAnalysis) {
-    trimmed.maturitySummary = payload.maturityAnalysis.summary?.slice(0, 300);
+    trimmed.maturitySummary = payload.maturityAnalysis.summary?.slice(0, 50000);
   }
   return trimmed;
 }
@@ -883,8 +880,10 @@ export default {
           return new Response(JSON.stringify({ error: "dev1 and dev2 required" }), { status: 400, headers: responseHeaders(origin, env) });
         }
 
-        const dev1Data = await processUser(body.dev1.trim().toLowerCase(), env, budget, true);
-        const dev2Data = await processUser(body.dev2.trim().toLowerCase(), env, budget, true);
+        const [dev1Data, dev2Data] = await Promise.all([
+          processUser(body.dev1.trim().toLowerCase(), env, createFetchBudget(), true),
+          processUser(body.dev2.trim().toLowerCase(), env, createFetchBudget(), true)
+        ]);
         return new Response(JSON.stringify({ dev1: dev1Data, dev2: dev2Data }), { headers: responseHeaders(origin, env) });
       }
 
