@@ -44,13 +44,24 @@ function SpinnerBtn({ loading, label }: { loading: boolean; label: string }) {
   );
 }
 
-function DualInput({ val1, setVal1, ph1, val2, setVal2, ph2, loading, btnLabel }: any) {
+interface DualInputProps {
+  val1: string;
+  setVal1: (val: string) => void;
+  ph1: string;
+  val2: string;
+  setVal2: (val: string) => void;
+  ph2: string;
+  loading: boolean;
+  btnLabel: string;
+}
+
+function DualInput({ val1, setVal1, ph1, val2, setVal2, ph2, loading, btnLabel }: DualInputProps) {
   const canSubmit = val1.trim() && val2.trim() && !loading;
   return (
     <div className="flex flex-col sm:flex-row items-center gap-3" style={wrapStyle}>
-      <input value={val1} onChange={(e: any) => setVal1(e.target.value)} placeholder={ph1} className="search-input py-3.5 px-5" />
+      <input value={val1} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVal1(e.target.value)} placeholder={ph1} className="search-input py-3.5 px-5" />
       <div className="text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full" style={{ background: 'var(--accent-light)', color: '#8B6914' }}>VS</div>
-      <input value={val2} onChange={(e: any) => setVal2(e.target.value)} placeholder={ph2} className="search-input py-3.5 px-5" />
+      <input value={val2} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVal2(e.target.value)} placeholder={ph2} className="search-input py-3.5 px-5" />
       <button type="submit" disabled={!canSubmit} className="shrink-0 w-full sm:w-auto px-7 py-3.5 rounded-2xl font-black text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={btnStyle}>
         {loading ? <div className="w-5 h-5 border-[3px] border-white/30 border-t-white rounded-full animate-spin" /> : btnLabel}
       </button>
