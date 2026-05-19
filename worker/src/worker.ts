@@ -243,7 +243,7 @@ query DevAnalyzerProfile($login: String!, $repoCount: Int!, $cursor: String) {
     organizations { totalCount }
     gists { totalCount }
     followers { totalCount }
-    publicRepos: repositories(privacy: PUBLIC) {
+    publicRepos: repositories(privacy: PUBLIC, first: 1) {
       totalCount
     }
     contributionsCollection {
