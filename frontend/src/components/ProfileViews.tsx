@@ -20,7 +20,7 @@ export function UserProfile({ data }: { data: AnalyzerResponse }) {
         <div className="orb w-72 h-72 top-[-20%] right-[-10%]" style={{ background: 'rgba(232, 168, 0, 0.08)' }} />
         <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between relative">
           <div className="flex items-center gap-4">
-            <a href={`https://github.com/${data.username}`} target="_blank" rel="noopener noreferrer"
+            <a href={`https://github.com/${data.username}`} target="_blank" rel="noopener noreferrer" aria-label={`View ${data.username}'s GitHub profile`}
               className="w-16 h-16 rounded-2xl flex items-center justify-center transition-all" style={{ background: 'var(--accent-light)', border: '1px solid var(--border-accent)' }}>
               <Github className="w-8 h-8" style={{ color: 'var(--accent)' }} />
             </a>

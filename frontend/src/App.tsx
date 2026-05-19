@@ -182,7 +182,7 @@ export default function App() {
                   if (val.includes('battle') || val.includes('compare')) { setMode('devcompare'); setCmdOpen(false); }
                 }}
               />
-              <button onClick={() => setCmdOpen(false)} style={{ color: 'var(--text-muted)' }}><X className="w-5 h-5" /></button>
+              <button onClick={() => setCmdOpen(false)} style={{ color: 'var(--text-muted)' }} aria-label="Close menu"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-2 space-y-1">
               <p className="px-3 py-2 text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Quick Actions</p>
