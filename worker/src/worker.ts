@@ -206,6 +206,7 @@ interface GithubGraphqlProfile {
     organizations?: { totalCount?: number };
     gists?: { totalCount?: number };
     followers?: { totalCount?: number };
+    publicRepos?: { totalCount?: number };
     contributionsCollection?: {
       totalCommitContributions?: number;
       totalPullRequestContributions?: number;
@@ -242,6 +243,9 @@ query DevAnalyzerProfile($login: String!, $repoCount: Int!, $cursor: String) {
     organizations { totalCount }
     gists { totalCount }
     followers { totalCount }
+    publicRepos: repositories(privacy: PUBLIC) {
+      totalCount
+    }
     contributionsCollection {
       totalCommitContributions
       totalPullRequestContributions
@@ -359,7 +363,7 @@ async function fetchUserGraphql(username: string, env: Env, budget: FetchBudget)
     } : null;
 
     followers = user.followers?.totalCount || followers;
-    totalRepos = user.repositories.totalCount || totalRepos;
+    totalRepos = user.publicRepos?.totalCount || user.repositories?.totalCount || totalRepos;
     allRepoNodes.push(...user.repositories.nodes);
     const pageInfo: { hasNextPage?: boolean; endCursor?: string | null } | undefined = user.repositories.pageInfo;
     cursor = pageInfo?.hasNextPage ? (pageInfo.endCursor || null) : null;
