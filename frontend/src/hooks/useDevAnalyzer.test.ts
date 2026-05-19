@@ -22,7 +22,7 @@ describe('useDevAnalyzer', () => {
     it('should successfully analyze a dev', async () => {
       const mockData = { username: 'testuser', devIq: 100, languageTags: [], analyzedReposCount: 1 };
 
-      global.fetch = vi.fn().mockResolvedValue({
+      globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => mockData
       });
@@ -42,7 +42,7 @@ describe('useDevAnalyzer', () => {
 
       expect(result.current.data).toEqual(mockData);
       expect(result.current.error).toBe(null);
-      expect(global.fetch).toHaveBeenCalledWith('/api/analyze', {
+      expect(globalThis.fetch).toHaveBeenCalledWith('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: 'testuser' })
@@ -50,7 +50,7 @@ describe('useDevAnalyzer', () => {
     });
 
     it('should handle API errors correctly', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
+      globalThis.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 404,
         json: async () => ({ error: 'User not found' })
@@ -71,7 +71,7 @@ describe('useDevAnalyzer', () => {
     });
 
     it('should handle network errors correctly', async () => {
-      global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+      globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
       const { result } = renderHook(() => useDevAnalyzer());
 
@@ -88,14 +88,14 @@ describe('useDevAnalyzer', () => {
     });
 
     it('should ignore empty username', async () => {
-      global.fetch = vi.fn();
+      globalThis.fetch = vi.fn();
       const { result } = renderHook(() => useDevAnalyzer());
 
       act(() => {
         result.current.analyze('   ');
       });
 
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(globalThis.fetch).not.toHaveBeenCalled();
       expect(result.current.loading).toBe(false);
     });
   });
@@ -104,7 +104,7 @@ describe('useDevAnalyzer', () => {
     it('should successfully analyze a repo', async () => {
       const mockRepoData = { owner: 'testuser', repoName: 'testrepo', devIq: 120, languageTags: [] };
 
-      global.fetch = vi.fn().mockResolvedValue({
+      globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => mockRepoData
       });
@@ -122,7 +122,7 @@ describe('useDevAnalyzer', () => {
       });
 
       expect(result.current.repoData).toEqual(mockRepoData);
-      expect(global.fetch).toHaveBeenCalledWith('/api/analyze-repo', {
+      expect(globalThis.fetch).toHaveBeenCalledWith('/api/analyze-repo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ repo: 'testuser/testrepo' })
@@ -137,7 +137,7 @@ describe('useDevAnalyzer', () => {
         repo2: { owner: 'test', repoName: 'repo2', devIq: 110, languageTags: [] }
       };
 
-      global.fetch = vi.fn().mockResolvedValue({
+      globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => mockCompareData
       });
@@ -155,7 +155,7 @@ describe('useDevAnalyzer', () => {
       });
 
       expect(result.current.compareData).toEqual(mockCompareData);
-      expect(global.fetch).toHaveBeenCalledWith('/api/compare-repos', {
+      expect(globalThis.fetch).toHaveBeenCalledWith('/api/compare-repos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ repo1: 'test/repo1', repo2: 'test/repo2' })
@@ -170,7 +170,7 @@ describe('useDevAnalyzer', () => {
         dev2: { username: 'dev2', devIq: 110, languageTags: [], analyzedReposCount: 1 }
       };
 
-      global.fetch = vi.fn().mockResolvedValue({
+      globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => mockCompareDevsData
       });
@@ -188,7 +188,7 @@ describe('useDevAnalyzer', () => {
       });
 
       expect(result.current.compareDevsData).toEqual(mockCompareDevsData);
-      expect(global.fetch).toHaveBeenCalledWith('/api/compare-devs', {
+      expect(globalThis.fetch).toHaveBeenCalledWith('/api/compare-devs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dev1: 'dev1', dev2: 'dev2' })
