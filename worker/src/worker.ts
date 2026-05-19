@@ -24,6 +24,7 @@ export interface Env {
   GITHUB_PAT: string;
   GROQ_API_KEY?: string;
   LANGUAGE_REPO_LIMIT?: string;
+  ALLOWED_ORIGINS?: string;
 }
 
 const MAX_FILE_BYTES = 85_000;
@@ -38,10 +39,26 @@ const COMPACT_REPO_EVIDENCE_FILE_LIMIT = 5;
 const DEPS_DEV_FETCH_LIMIT = 4;
 
 const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
+
+function validateOrigin(origin: string | null, env: Env): string | null {
+  if (!origin) return null;
+
+  // Always allow localhost for development
+  if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) {
+    return origin;
+  }
+
+  // Check against comma-separated allowed origins from env
+  const allowedOrigins = env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
+  if (allowedOrigins.includes(origin)) {
+    return origin;
+  }
+
+  return null;
+}
 
 interface FetchBudget {
   used: number;
@@ -630,12 +647,18 @@ async function processRepo(owner: string, repoName: string, env: Env, budget: Fe
 
 
 
-function responseHeaders(origin: string | null) {
-  return {
+function responseHeaders(origin: string | null, env: Env) {
+  const allowedOrigin = validateOrigin(origin, env);
+  const headers: Record<string, string> = {
     ...CORS_HEADERS,
-    "Access-Control-Allow-Origin": origin || "*",
     "Content-Type": "application/json",
   };
+
+  if (allowedOrigin) {
+    headers["Access-Control-Allow-Origin"] = allowedOrigin;
+  }
+
+  return headers;
 }
 
 // ── Deterministic Analysis Engine (Groq) ─────────────────────────────────────
@@ -790,12 +813,12 @@ export default {
     const origin = request.headers.get("Origin");
 
     if (request.method === "OPTIONS") {
-      return new Response(null, {
-        headers: {
-          ...CORS_HEADERS,
-          "Access-Control-Allow-Origin": origin || "*",
-        },
-      });
+      const allowedOrigin = validateOrigin(origin, env);
+      const headers: Record<string, string> = { ...CORS_HEADERS };
+      if (allowedOrigin) {
+        headers["Access-Control-Allow-Origin"] = allowedOrigin;
+      }
+      return new Response(null, { headers });
     }
 
     try {
@@ -805,55 +828,55 @@ export default {
       if (url.pathname === "/api/analyze" && request.method === "POST") {
         const body = (await request.json().catch(() => ({}))) as { username?: string };
         if (!body.username) {
-          return new Response(JSON.stringify({ error: "Username required" }), { status: 400, headers: responseHeaders(origin) });
+          return new Response(JSON.stringify({ error: "Username required" }), { status: 400, headers: responseHeaders(origin, env) });
         }
         const data = await processUser(body.username.trim().toLowerCase(), env, budget);
-        return new Response(JSON.stringify(data), { headers: responseHeaders(origin) });
+        return new Response(JSON.stringify(data), { headers: responseHeaders(origin, env) });
       }
 
       if (url.pathname === "/api/compare-devs" && request.method === "POST") {
         const body = (await request.json().catch(() => ({}))) as { dev1?: string; dev2?: string };
         if (!body.dev1 || !body.dev2) {
-          return new Response(JSON.stringify({ error: "dev1 and dev2 required" }), { status: 400, headers: responseHeaders(origin) });
+          return new Response(JSON.stringify({ error: "dev1 and dev2 required" }), { status: 400, headers: responseHeaders(origin, env) });
         }
 
         const dev1Data = await processUser(body.dev1.trim().toLowerCase(), env, budget, true);
         const dev2Data = await processUser(body.dev2.trim().toLowerCase(), env, budget, true);
-        return new Response(JSON.stringify({ dev1: dev1Data, dev2: dev2Data }), { headers: responseHeaders(origin) });
+        return new Response(JSON.stringify({ dev1: dev1Data, dev2: dev2Data }), { headers: responseHeaders(origin, env) });
       }
 
       if (url.pathname === "/api/analyze-repo" && request.method === "POST") {
         const body = (await request.json().catch(() => ({}))) as { repo?: string };
         if (!body.repo) {
-          return new Response(JSON.stringify({ error: "repo required (e.g., owner/repo)" }), { status: 400, headers: responseHeaders(origin) });
+          return new Response(JSON.stringify({ error: "repo required (e.g., owner/repo)" }), { status: 400, headers: responseHeaders(origin, env) });
         }
 
         const [owner, name] = body.repo.trim().split("/");
         if (!owner || !name) {
-          return new Response(JSON.stringify({ error: "Invalid repo format. Use owner/repo" }), { status: 400, headers: responseHeaders(origin) });
+          return new Response(JSON.stringify({ error: "Invalid repo format. Use owner/repo" }), { status: 400, headers: responseHeaders(origin, env) });
         }
 
         const data = await processRepo(owner.toLowerCase(), name.toLowerCase(), env, budget);
-        return new Response(JSON.stringify(data), { headers: responseHeaders(origin) });
+        return new Response(JSON.stringify(data), { headers: responseHeaders(origin, env) });
       }
 
       if (url.pathname === "/api/compare-repos" && request.method === "POST") {
         const body = (await request.json().catch(() => ({}))) as { repo1?: string; repo2?: string };
         if (!body.repo1 || !body.repo2) {
-          return new Response(JSON.stringify({ error: "repo1 and repo2 required (e.g., owner/repo)" }), { status: 400, headers: responseHeaders(origin) });
+          return new Response(JSON.stringify({ error: "repo1 and repo2 required (e.g., owner/repo)" }), { status: 400, headers: responseHeaders(origin, env) });
         }
 
         const [owner1, name1] = body.repo1.trim().split("/");
         const [owner2, name2] = body.repo2.trim().split("/");
         if (!owner1 || !name1 || !owner2 || !name2) {
-          return new Response(JSON.stringify({ error: "Invalid repo format. Use owner/repo" }), { status: 400, headers: responseHeaders(origin) });
+          return new Response(JSON.stringify({ error: "Invalid repo format. Use owner/repo" }), { status: 400, headers: responseHeaders(origin, env) });
         }
 
         const [repo1Data, repo2Data] = await Promise.all([
           processRepo(owner1.toLowerCase(), name1.toLowerCase(), env, budget, true),
           processRepo(owner2.toLowerCase(), name2.toLowerCase(), env, budget, true),
         ]);
-        return new Response(JSON.stringify({ repo1: repo1Data, repo2: repo2Data }), { headers: responseHeaders(origin) });
+        return new Response(JSON.stringify({ repo1: repo1Data, repo2: repo2Data }), { headers: responseHeaders(origin, env) });
       }
 
       return new Response("Not Found", { status: 404, headers: CORS_HEADERS });
@@ -861,7 +884,7 @@ export default {
       console.error("[Worker Error]", error);
       return new Response(JSON.stringify({ error: "An internal server error occurred" }), {
         status: 500,
-        headers: responseHeaders(origin),
+        headers: responseHeaders(origin, env),
       });
     }
   },
