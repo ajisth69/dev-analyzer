@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateDevIQ } from './analysisCore';
+import { calculateDevIQ, parsePackageJson } from './analysisCore';
 
 describe('calculateDevIQ', () => {
   it('should return 0 when there are no repos, languages, or followers', () => {
@@ -80,9 +80,10 @@ describe('calculateDevIQ', () => {
   it('should calculate repo point bonuses based on stargazers, forks, and license', () => {
     const repos = [
       {
+        name: 'test-repo',
         stargazers_count: 10, // 10 * 50 = 500
         forks_count: 2,       // 2 * 150 = 300
-        license: { key: 'mit' } // 500
+        license: { spdx_id: 'MIT' } // 500
       }
     ];
     // Expected DevIQ = 500 + 300 + 500 = 1300
@@ -93,6 +94,7 @@ describe('calculateDevIQ', () => {
   it('should grant longevity bonus for old repositories', () => {
     const repos = [
       {
+        name: 'test-repo',
         created_at: new Date(Date.now() - 30 * 30 * 24 * 60 * 60 * 1000).toISOString(), // ~30 months ago
         updated_at: new Date().toISOString()
       }
@@ -109,6 +111,7 @@ describe('calculateDevIQ', () => {
   it('should skip longevity bonus if dates are invalid', () => {
     const repos = [
       {
+        name: 'test-repo',
         created_at: "invalid-date",
         updated_at: "invalid-date"
       }
@@ -120,6 +123,7 @@ describe('calculateDevIQ', () => {
   it('should grant bonus for low issue ratio', () => {
     const repos = [
       {
+        name: 'test-repo',
         stargazers_count: 20, // 20 * 50 = 1000
         open_issues_count: 1  // ratio = 1/20 = 0.05 < 0.1, adds 300
       }
@@ -151,5 +155,33 @@ describe('calculateDevIQ', () => {
     // Let's pass a string as any to followers
     const devIq = calculateDevIQ([], [], "NaN" as any);
     expect(devIq).toBe(0);
+  });
+});
+
+describe('parsePackageJson', () => {
+  it('should parse valid package.json', () => {
+    const file = {
+      name: 'package.json',
+      content: JSON.stringify({
+        dependencies: {
+          react: '^18.0.0'
+        }
+      })
+    };
+    const result = parsePackageJson(file);
+    expect(result).toEqual({
+      dependencies: {
+        react: '^18.0.0'
+      }
+    });
+  });
+
+  it('should return null for malformed JSON', () => {
+    const file = {
+      name: 'package.json',
+      content: '{ malformed: json }'
+    };
+    const result = parsePackageJson(file);
+    expect(result).toBeNull();
   });
 });
