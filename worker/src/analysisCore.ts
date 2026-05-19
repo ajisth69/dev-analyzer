@@ -938,7 +938,7 @@ function buildSecurityAudit(files: FileSignal[]) {
   return { findings, counts, score };
 }
 
-function parsePackageJson(file: FileSignal) {
+export function parsePackageJson(file: FileSignal) {
   try {
     return JSON.parse(file.content) as {
       dependencies?: Record<string, string>;
