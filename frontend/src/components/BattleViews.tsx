@@ -33,7 +33,7 @@ function AIDeclarationReport({ report, winnerName }: { report?: string; winnerNa
               </span>
             )}
           </div>
-          <p className="text-xl md:text-2xl font-black text-white leading-snug tracking-tight">
+          <p className="text-lg md:text-xl font-mono font-bold italic text-slate-100 leading-relaxed tracking-tight bg-slate-950/40 p-4 rounded-2xl border border-white/5 mt-2">
             "{report}"
           </p>
         </div>

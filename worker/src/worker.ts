@@ -751,18 +751,18 @@ Schema:
 {
   "ai_score": <0-100. Dynamically calculate this using the comprehensive grading system below.>,
   "ai_grade": <"S"|"A+"|"A"|"B+"|"B"|"C"|"D"|"F". Match the calculated score: S (95+), A+/A (85-94), B+/B (70-84), C (50-69), D (30-49), F (<30)>,
-  "profile_verdict": <30 words, blunt overall assessment>,
-  "code_quality_verdict": <30 words>,
-  "architecture_verdict": <30 words>,
-  "security_verdict": <30 words>,
-  "scalability_verdict": <30 words>,
-  "documentation_verdict": <30 words>,
-  "innovation_verdict": <30 words>,
-  "community_verdict": <30 words, about stars/forks/followers/visibility>,
-  "role_fit_verdict": <30 words, best role and why>,
-  "growth_verdict": <30 words, what they should improve>,
-  "roast": <80-120 words. SAVAGE funny roast. Roast username, repo names, star count, fork count, language choices, commit patterns. Be cringey, use gen-z humor, emojis. Reference specific repos/stats.>,
-  "top_repos_analysis": [{"repo_name": <string>, "repo_score": <0-100>, "verdict": <25 words>}]
+  "profile_verdict": <40 words, blunt overall assessment>,
+  "code_quality_verdict": <40 words>,
+  "architecture_verdict": <40 words>,
+  "security_verdict": <40 words>,
+  "scalability_verdict": <40 words>,
+  "documentation_verdict": <40 words>,
+  "innovation_verdict": <40 words>,
+  "community_verdict": <40 words, about stars/forks/followers/visibility>,
+  "role_fit_verdict": <40 words, best role and why>,
+  "growth_verdict": <40 words, what they should improve>,
+  "roast": <100-140 words. SAVAGE funny roast. Roast username, repo names, star count, fork count, language choices, commit patterns. Be cringey, use gen-z humor, emojis. Reference specific repos/stats.>,
+  "top_repos_analysis": [{"repo_name": <string>, "repo_score": <0-100>, "verdict": <35 words>}]
 }
 
 COMPREHENSIVE GRADING SYSTEM:
@@ -864,7 +864,7 @@ async function getBattleReport(item1: any, item2: any, kind: "dev" | "repo", env
   if (score1 > score2) winner = name1;
   else if (score2 > score1) winner = name2;
 
-  const systemPrompt = `You are a savage, ultra-cringey tech-bro influencer hosting a developer/code battle. Declare the winner, then roast the loser brutally explaining exactly why they lost (based on their metrics, low DevIQ, or lack of code volume) and hype the winner in a hilariously cringey tech-bro way explaining why they won. Keep the entire response STRICTLY between 40 and 50 words! No markdown, no intro/outro, no formatting. Just return the raw text roast message directly. Use Gen-Z and tech influencer emojis (e.g. 💀, 🚀, 👑, 💻, 🥶, 💅).`;
+  const systemPrompt = `You are a savage, ultra-cringey tech-bro influencer hosting a developer/code battle. Declare the winner clearly by name, then roast the loser brutally explaining exactly why they lost (lack of stars, low DevIQ, poor commits) and hype the winner in a hilariously cringey tech-bro way explaining exactly how they won (godly DevIQ, superior code maturity, clean language stacks). Keep the entire response STRICTLY between 50 and 60 words! No markdown, no intro/outro, no formatting. Just return the raw text roast message directly. Use Gen-Z and tech influencer emojis (e.g. 💀, 🚀, 👑, 💻, 🥶, 💅).`;
 
   const userContent = `Compare:
   Competitor 1: ${name1} (Score: ${score1}, Grade: ${item1.ai_grade}, DevIQ: ${item1.devIq}, Summary: ${item1.profileDetails?.bio || item1.maturityAnalysis?.summary?.slice(0, 100) || ""}, Roast snippet: ${item1.roast?.slice(0, 100) || ""})
