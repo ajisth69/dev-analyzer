@@ -6,12 +6,14 @@
     "dev": "wrangler dev --local",
     "deploy": "powershell -File deploy.ps1",
     "deploy:linux": "bash deploy.sh",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260101.0",
     "esbuild": "^0.25.0",
     "typescript": "^5.7.0",
+    "vitest": "^4.1.6",
     "wrangler": "^4.0.0"
   }
 }
