@@ -573,7 +573,7 @@ async function processUser(username: string, env: Env, budget: FetchBudget, batt
     maturityAnalysis,
     analyzedReposCount,
     advancedAnalysis,
-    repos: repos.slice(0, 15).map((r: any) => ({ name: r.name, stars: r.stargazers_count || 0, forks: r.forks_count || 0, description: r.description || '' })),
+    repos: repos.slice(0, 15).map((r: { name: string; stargazers_count?: number; forks_count?: number; description?: string | null }) => ({ name: r.name, stars: r.stargazers_count || 0, forks: r.forks_count || 0, description: r.description || '' })),
     followers,
     contributions: graphqlProfile?.contributions || null,
     profileDetails: graphqlProfile?.profileDetails || null,
