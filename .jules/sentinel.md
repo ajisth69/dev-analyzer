@@ -2,3 +2,7 @@
 **Vulnerability:** The global Cloudflare Worker try/catch block returned raw `error.message` strings directly to the client in a 500 status response (`{ error: error.message }`).
 **Learning:** Returning unhandled runtime exceptions directly to the frontend can inadvertently expose sensitive configuration data, like missing environment variables (e.g., `GITHUB_PAT environment variable is not set`), API key details, or internal application state, giving attackers reconnaissance data.
 **Prevention:** Catch all unhandled exceptions globally, log them securely on the server (`console.error`), and return a sanitized, generic error message (e.g., `"An internal server error occurred"`) to the client.
+## 2026-05-19 - Strict CORS Implementation
+**Vulnerability:** Overly Permissive CORS Policy
+**Learning:** Blindly echoing back the requested origin or allowing '*' exposes the application to cross-origin attacks
+**Prevention:** Implement strict origin validation against a whitelist of allowed domains or environmental configurations, explicitly setting Access-Control-Allow-Origin only when matched
