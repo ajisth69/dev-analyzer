@@ -1,0 +1,17 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.30.3",
+  "devDependencies": {
+    "@types/node": "^25.9.0",
+    "vitest": "^4.1.6"
+  }
+}
