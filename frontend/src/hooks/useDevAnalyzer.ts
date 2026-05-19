@@ -47,6 +47,15 @@ export interface AdvancedAnalysis {
   deepAnalysis?: { summary: string; architecture: string; modernity: string; security: string; scalability: string; remarks: Array<{ topic: string; remark: string }>; };
 }
 
+export interface SeniorityAnalysis {
+  summary: string;
+  architecture?: string;
+  modernity?: string;
+  security?: string;
+  scalability?: string;
+  remarks?: Array<{ topic: string; remark: string }>;
+}
+
 export interface AIRepoAnalysis { repo_name: string; repo_score: number; verdict: string; }
 
 export interface AnalyzerResponse {
@@ -54,7 +63,7 @@ export interface AnalyzerResponse {
   devIq: number;
   languageTags: string[];
   maturityAnalysis?: { summary: string; metrics: AnalysisMetrics; architecture: string; modernity: string; security: string; scalability: string; remarks: Array<{ topic: string; remark: string }>; };
-  seniorityAnalysis?: any;
+  seniorityAnalysis?: SeniorityAnalysis;
   analyzedReposCount: number;
   advancedAnalysis?: AdvancedAnalysis;
   ai_score?: number;
@@ -79,7 +88,7 @@ export interface RepoAnalysisResponse {
   devIq: number;
   languageTags: string[];
   maturityAnalysis?: { summary: string; metrics: AnalysisMetrics; architecture: string; modernity: string; security: string; scalability: string; remarks: Array<{ topic: string; remark: string }>; };
-  seniorityAnalysis?: any;
+  seniorityAnalysis?: SeniorityAnalysis;
   advancedAnalysis?: AdvancedAnalysis;
   ai_score?: number;
   ai_grade?: string;
