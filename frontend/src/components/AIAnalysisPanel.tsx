@@ -1,4 +1,4 @@
-import { Brain, Code2, Flame, Globe, Layout, Lightbulb, MessageSquare, Rocket, Shield, Star, TrendingUp, Users, Zap, Layers, Sparkles } from 'lucide-react';
+import { Brain, Code2, Flame, Lightbulb, MessageSquare, Shield, Star, TrendingUp, Users, Zap, Layers, Sparkles, Crown, Gem, UserCheck } from 'lucide-react';
 import { AIRepoAnalysis, SuggestedProject } from '../hooks/useDevAnalyzer';
 
 interface AIAnalysisPanelProps {
@@ -22,68 +22,77 @@ interface AIAnalysisPanelProps {
   suggested_projects?: SuggestedProject[];
 }
 
-function GradeBadge({ grade }: { grade: string }) {
-  const color = grade === 'S' || grade === 'A+' ? 'from-emerald-400 to-cyan-400' : grade === 'A' || grade === 'B+' ? 'from-sky-400 to-indigo-400' : grade === 'B' || grade === 'C' ? 'from-amber-400 to-orange-400' : 'from-rose-400 to-pink-500';
-  return <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br ${color} text-slate-950 font-black text-2xl shadow-lg shadow-current/20`}>{grade}</div>;
-}
-
 function ScoreBadge({ value }: { value: number }) {
-  const color = value >= 80 ? 'from-emerald-400 to-cyan-400' : value >= 60 ? 'from-sky-400 to-indigo-400' : value >= 40 ? 'from-amber-400 to-orange-400' : 'from-rose-400 to-pink-500';
-  return <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br ${color} text-slate-950 font-black text-lg shadow-lg`}>{value}</div>;
+  const color = value >= 80 ? '#2E7D32' : value >= 60 ? '#1565C0' : value >= 40 ? '#E65100' : '#C62828';
+  const bg = value >= 80 ? '#E8F5E9' : value >= 60 ? '#E3F2FD' : value >= 40 ? '#FFF3E0' : '#FFEBEE';
+  return (
+    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black font-mono shadow-sm" style={{ background: bg, color }}>
+      <Sparkles className="w-3.5 h-3.5" />
+      <span>{value}/100</span>
+    </div>
+  );
 }
 
-function VerdictCard({ icon, label, text, accent }: { icon: React.ReactNode; label: string; text: string; accent: string }) {
+function GradeBadge({ grade }: { grade: string }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border p-5 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-current/5" style={{ borderColor: `${accent}30`, background: `${accent}08` }}>
-      <div className="flex items-center gap-2 mb-3" style={{ color: accent }}>
-        {icon}
-        <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-slate-950 font-black text-sm flex items-center justify-center shadow-md shadow-amber-500/20 font-mono">
+      {grade}
+    </div>
+  );
+}
+
+function VerdictCard({ icon: Icon, label, text, accent }: { icon: any; label: string; text: string; accent: string }) {
+  if (!text) return null;
+  return (
+    <div className="group relative overflow-hidden rounded-2xl border p-4 transition-all card-hover noise" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+      <div className="flex items-center gap-2.5 mb-2">
+        <div className={`p-1.5 rounded-lg ${accent} bg-opacity-10`}>
+          <Icon className="w-4 h-4" />
+        </div>
+        <span className="text-[11px] font-black uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{label}</span>
       </div>
-      <p className="text-sm leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>{text || '—'}</p>
+      <p className="text-xs leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>{text}</p>
     </div>
   );
 }
 
 export function AIAnalysisPanel(props: AIAnalysisPanelProps) {
-  const { kind, ai_score, ai_grade, developer_role_title, repo_archetype, profile_verdict, code_quality_verdict, architecture_verdict, security_verdict, scalability_verdict, documentation_verdict, innovation_verdict, community_verdict, role_fit_verdict, growth_verdict, roast, top_repos_analysis, suggested_projects } = props;
+  const { kind = 'dev', ai_score, ai_grade, developer_role_title, repo_archetype, profile_verdict, code_quality_verdict, architecture_verdict, security_verdict, scalability_verdict, documentation_verdict, innovation_verdict, community_verdict, role_fit_verdict, growth_verdict, roast, top_repos_analysis, suggested_projects } = props;
 
-  const hasAI = ai_score !== undefined || ai_grade || developer_role_title || repo_archetype || profile_verdict || code_quality_verdict || architecture_verdict || security_verdict || roast || (top_repos_analysis && top_repos_analysis.length > 0) || (suggested_projects && suggested_projects.length > 0);
-  if (!hasAI) return null;
-
-  const showDevRole = kind === 'dev' ? Boolean(developer_role_title) : !kind ? Boolean(developer_role_title && !repo_archetype) : false;
-  const showRepoArchetype = kind === 'repo' ? Boolean(repo_archetype) : !kind ? Boolean(repo_archetype) : false;
+  const showDevRole = kind === 'dev' && Boolean(developer_role_title);
+  const showRepoArchetype = kind === 'repo' && Boolean(repo_archetype);
 
   const verdicts = [
-    { text: profile_verdict, icon: <MessageSquare className="w-4 h-4" />, label: 'Overall Verdict', accent: '#38bdf8' },
-    { text: code_quality_verdict, icon: <Code2 className="w-4 h-4" />, label: 'Code Quality', accent: '#818cf8' },
-    { text: architecture_verdict, icon: <Layout className="w-4 h-4" />, label: 'Architecture', accent: '#a78bfa' },
-    { text: security_verdict, icon: <Shield className="w-4 h-4" />, label: 'Security', accent: '#10b981' },
-    { text: scalability_verdict, icon: <Rocket className="w-4 h-4" />, label: 'Scalability', accent: '#f59e0b' },
-    { text: documentation_verdict, icon: <Globe className="w-4 h-4" />, label: 'Documentation', accent: '#06b6d4' },
-    { text: innovation_verdict, icon: <Lightbulb className="w-4 h-4" />, label: 'Innovation', accent: '#f43f5e' },
-    { text: community_verdict, icon: <Users className="w-4 h-4" />, label: 'Community Impact', accent: '#8b5cf6' },
-    { text: role_fit_verdict, icon: <Zap className="w-4 h-4" />, label: 'Best Role Fit', accent: '#14b8a6' },
-    { text: growth_verdict, icon: <TrendingUp className="w-4 h-4" />, label: 'Growth Path', accent: '#fb923c' },
-  ].filter(v => v.text);
+    { icon: UserCheck, label: 'Profile Summary', text: profile_verdict, accent: 'text-sky-500' },
+    { icon: Code2, label: 'Code Quality', text: code_quality_verdict, accent: 'text-emerald-500' },
+    { icon: Layers, label: 'Architecture', text: architecture_verdict, accent: 'text-violet-500' },
+    { icon: Shield, label: 'Security', text: security_verdict, accent: 'text-rose-500' },
+    { icon: Zap, label: 'Scalability', text: scalability_verdict, accent: 'text-amber-500' },
+    { icon: MessageSquare, label: 'Documentation', text: documentation_verdict, accent: 'text-teal-500' },
+    { icon: Lightbulb, label: 'Innovation', text: innovation_verdict, accent: 'text-yellow-500' },
+    { icon: Users, label: 'Community', text: community_verdict, accent: 'text-pink-500' },
+    { icon: Star, label: 'Role Fit', text: role_fit_verdict, accent: 'text-indigo-500' },
+    { icon: TrendingUp, label: 'Growth Potential', text: growth_verdict, accent: 'text-cyan-500' },
+  ].filter((v) => Boolean(v.text));
 
   return (
     <section className="mt-10 space-y-6 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-      {/* Header */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
+      {/* Top Banner */}
+      <div className="flex flex-wrap items-center gap-4 p-5 rounded-2xl noise" style={{ background: 'var(--accent-light)', border: '1px solid var(--border-accent)' }}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm" style={{ background: 'var(--accent)', color: 'white' }}>
           <Brain className="w-5 h-5" />
         </div>
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-lg font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>Intelligence Report</h3>
             {showDevRole && (
-              <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/30">
-                👑 {developer_role_title}
+              <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/30 inline-flex items-center gap-1.5">
+                <Crown className="w-3.5 h-3.5 text-violet-400" /> {developer_role_title}
               </span>
             )}
             {showRepoArchetype && (
-              <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                💎 {repo_archetype}
+              <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 inline-flex items-center gap-1.5">
+                <Gem className="w-3.5 h-3.5 text-amber-400" /> {repo_archetype}
               </span>
             )}
           </div>
@@ -95,12 +104,12 @@ export function AIAnalysisPanel(props: AIAnalysisPanelProps) {
         </div>
       </div>
 
-      {/* 🔥 Roast Section */}
+      {/* Flame Roast Section */}
       {roast && (
         <div className="relative overflow-hidden rounded-2xl border border-orange-500/30 bg-gradient-to-br from-orange-500/10 via-red-500/5 to-pink-500/10 p-6 transition-all hover:border-orange-400/50">
-          <div className="absolute top-3 right-4 text-4xl opacity-20 animate-bounce">🔥</div>
+          <Flame className="absolute top-3 right-4 w-10 h-10 text-orange-500 opacity-20 animate-pulse" />
           <div className="flex items-center gap-2" style={{ color: '#C05621' }}>
-            <Flame className="w-5 h-5" />
+            <Flame className="w-5 h-5 text-orange-500" />
             <span className="text-xs font-black uppercase tracking-widest">Roast</span>
           </div>
           <p className="text-sm leading-relaxed font-medium italic" style={{ color: 'var(--text-secondary)' }}>{roast}</p>

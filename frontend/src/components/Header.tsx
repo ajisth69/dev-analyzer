@@ -1,4 +1,4 @@
-import { Github, Code2, Key } from 'lucide-react';
+import { Github, Code2, Key, Zap, FolderGit2, Swords, Flame, LucideIcon } from 'lucide-react';
 import { getDailyUsage, getCustomGroqKey, DAILY_FREE_LIMIT } from '../hooks/useDevAnalyzer';
 
 type Mode = 'user' | 'singlerepo' | 'repo' | 'devcompare';
@@ -9,11 +9,11 @@ interface Props {
   onOpenKeyModal?: () => void;
 }
 
-const tabs: { id: Mode; label: string }[] = [
-  { id: 'user',       label: '⚡ Dev Profile' },
-  { id: 'singlerepo', label: '📦 Repo Profile' },
-  { id: 'repo',       label: '⚔️ Repos Battle' },
-  { id: 'devcompare', label: '🔥 Devs Battle' },
+const tabs: { id: Mode; label: string; Icon: LucideIcon }[] = [
+  { id: 'user',       label: 'Dev Profile', Icon: Zap },
+  { id: 'singlerepo', label: 'Repo Profile', Icon: FolderGit2 },
+  { id: 'repo',       label: 'Repos Battle', Icon: Swords },
+  { id: 'devcompare', label: 'Devs Battle', Icon: Flame },
 ];
 
 export function Header({ mode, setMode, onOpenKeyModal }: Props) {
@@ -38,17 +38,18 @@ export function Header({ mode, setMode, onOpenKeyModal }: Props) {
 
         {/* Nav Tabs */}
         <nav className="flex items-center gap-1 rounded-2xl p-1.5 overflow-x-auto" style={{ background: 'var(--accent-light)', border: '1px solid var(--border-accent)' }}>
-          {tabs.map(({ id, label }) => (
+          {tabs.map(({ id, label, Icon }) => (
             <button
               key={id}
               onClick={() => setMode(id)}
-              className="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all"
+              className="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5"
               style={{
                 background: mode === id ? 'var(--accent)' : 'transparent',
                 color: mode === id ? 'white' : 'var(--text-secondary)',
                 boxShadow: mode === id ? '0 2px 8px rgba(232, 168, 0, 0.3)' : 'none',
               }}
             >
+              <Icon className="w-3.5 h-3.5" />
               {label}
             </button>
           ))}

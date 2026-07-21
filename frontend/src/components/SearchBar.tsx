@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Box } from 'lucide-react';
+import { Search, Box, Swords, Flame } from 'lucide-react';
 
 type Mode = 'user' | 'singlerepo' | 'repo' | 'devcompare';
 
@@ -53,9 +53,10 @@ interface DualInputProps {
   ph2: string;
   loading: boolean;
   btnLabel: string;
+  Icon?: any;
 }
 
-function DualInput({ val1, setVal1, ph1, val2, setVal2, ph2, loading, btnLabel }: DualInputProps) {
+function DualInput({ val1, setVal1, ph1, val2, setVal2, ph2, loading, btnLabel, Icon }: DualInputProps) {
   const canSubmit = val1.trim() && val2.trim() && !loading;
   return (
     <div className="flex flex-col sm:flex-row items-center gap-3" style={wrapStyle}>
@@ -63,7 +64,12 @@ function DualInput({ val1, setVal1, ph1, val2, setVal2, ph2, loading, btnLabel }
       <div className="text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full" style={{ background: 'var(--accent-light)', color: '#8B6914' }}>VS</div>
       <input value={val2} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVal2(e.target.value)} placeholder={ph2} className="search-input py-3.5 px-5" />
       <button type="submit" disabled={!canSubmit} className="shrink-0 w-full sm:w-auto px-7 py-3.5 rounded-2xl font-black text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={btnStyle}>
-        {loading ? <div className="w-5 h-5 border-[3px] border-white/30 border-t-white rounded-full animate-spin" /> : btnLabel}
+        {loading ? <div className="w-5 h-5 border-[3px] border-white/30 border-t-white rounded-full animate-spin" /> : (
+          <>
+            {Icon && <Icon className="w-4 h-4" />}
+            {btnLabel}
+          </>
+        )}
       </button>
     </div>
   );
@@ -113,7 +119,7 @@ export function SearchBar(props: Props) {
           <DualInput
             val1={props.repo1Input} setVal1={props.setRepo1Input} ph1="e.g. vuejs/core"
             val2={props.repo2Input} setVal2={props.setRepo2Input} ph2="e.g. facebook/react"
-            loading={loading} btnLabel="⚔️ Battle!"
+            loading={loading} btnLabel="Battle!" Icon={Swords}
           />
         )}
 
@@ -121,7 +127,7 @@ export function SearchBar(props: Props) {
           <DualInput
             val1={props.dev1Input} setVal1={props.setDev1Input} ph1="e.g. torvalds"
             val2={props.dev2Input} setVal2={props.setDev2Input} ph2="e.g. gaearon"
-            loading={loading} btnLabel="🔥 Battle!"
+            loading={loading} btnLabel="Battle!" Icon={Flame}
           />
         )}
       </form>

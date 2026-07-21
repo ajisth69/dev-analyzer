@@ -6,7 +6,7 @@ import { TagPills, ScoreRing, WinnerBadge } from '../components/UI';
 describe('UI Shared Display Components', () => {
   it('renders WinnerBadge correctly', () => {
     render(<WinnerBadge />);
-    expect(screen.getByText('🏆 Winner')).toBeInTheDocument();
+    expect(screen.getByText('Winner')).toBeInTheDocument();
   });
 
   it('renders ScoreRing value correctly', () => {

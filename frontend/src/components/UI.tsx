@@ -1,4 +1,5 @@
 import React from 'react';
+import { Trophy, Brain } from 'lucide-react';
 
 // Shared display components used across result views
 
@@ -45,9 +46,9 @@ export function ScoreRing({ value, max = 100, size = 88, color = '#E8A800', labe
 
 export function WinnerBadge({ color: _color = 'text-emerald-400' }: { color?: string }) {
   return (
-    <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border winner-pulse`}
+    <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border winner-pulse`}
       style={{ background: 'var(--accent-light)', borderColor: 'var(--border-accent)', color: '#8B6914' }}>
-      🏆 Winner
+      <Trophy className="w-3.5 h-3.5" /> Winner
     </span>
   );
 }
@@ -63,8 +64,8 @@ export function DeepAnalysisSummary({ summary }: { summary: string }) {
       <div className="absolute inset-0 rounded-3xl opacity-20" style={{ background: 'linear-gradient(to right, var(--accent), #D4780A, #C05621)' }} />
       <div className="relative rounded-3xl p-8" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
         <SectionLabel>
-          <span className="font-black tracking-[0.2em] text-xs gradient-amber">
-            🧠 Deep Analysis Engine
+          <span className="font-black tracking-[0.2em] text-xs gradient-amber inline-flex items-center gap-1.5">
+            <Brain className="w-4 h-4 text-amber-500" /> Deep Analysis Engine
           </span>
         </SectionLabel>
         <div className="relative z-10 mt-6 space-y-4">

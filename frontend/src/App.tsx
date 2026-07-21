@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Search, Command, X, FileText, Printer } from 'lucide-react';
+import { AlertTriangle, Search, Command, X, FileText, Printer, Heart, User, FolderGit2, Swords } from 'lucide-react';
 import { useDevAnalyzer, getDailyUsage, getCustomGroqKey, DAILY_FREE_LIMIT } from './hooks/useDevAnalyzer';
 import { Header } from './components/Header';
 import { SearchBar } from './components/SearchBar';
@@ -269,8 +269,8 @@ export default function App() {
       </main>
 
       <footer className="relative z-10 text-center py-8 mt-8 flex flex-col items-center gap-2" style={{ borderTop: '1px solid var(--border)' }}>
-        <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-          Built with ❤️ by{' '}
+        <p className="text-xs font-mono inline-flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+          Built with <Heart className="w-3.5 h-3.5 text-rose-500 fill-current inline" /> by{' '}
           <a href="https://github.com/ajisth69" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: 700 }}>@ajisth69</a>
           {' '}· Powered by Deterministic Analysis Engine
         </p>
@@ -298,12 +298,13 @@ export default function App() {
             <div className="p-2 space-y-1">
               <p className="px-3 py-2 text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Quick Actions</p>
               {[
-                ['user', '👤 Analyze Developer'],
-                ['singlerepo', '📦 Analyze Single Repo'],
-                ['devcompare', '⚔️ Battle Mode'],
-              ].map(([m, label]) => (
+                ['user', 'Analyze Developer', User],
+                ['singlerepo', 'Analyze Single Repo', FolderGit2],
+                ['devcompare', 'Battle Mode', Swords],
+              ].map(([m, label, Icon]: any) => (
                 <button key={m} onClick={() => { setMode(m as Mode); setCmdOpen(false); }} className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-colors" style={{ color: 'var(--text-secondary)' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-light)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                  <Icon className="w-4 h-4 text-amber-500" />
                   {label}
                 </button>
               ))}
