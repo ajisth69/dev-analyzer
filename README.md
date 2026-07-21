@@ -1,6 +1,6 @@
 # Dev Analyzer
 
-Deterministic analysis engine for GitHub developers and repositories. Lightweight, stateless architecture with dual Cloudflare Worker and Vercel support.
+Deterministic analysis engine for GitHub developers and repositories. Lightweight, stateless architecture deployed on Vercel.
 
 ---
 
@@ -41,17 +41,14 @@ This project follows conventional commit standard for git commit history:
 
 ### Local Development
 
-1. Start backend worker:
+1. Install dependencies:
 ```bash
-cd worker
 npm install
-npx wrangler dev --local --port 8787
+cd frontend && npm install
 ```
 
-2. Start frontend application:
+2. Start frontend dev server:
 ```bash
-cd frontend
-npm install
 npm run dev
 ```
 
@@ -59,23 +56,14 @@ npm run dev
 
 ## Deployment
 
-### Vercel
+### Vercel (One-Click)
 
 1. Fork repository to GitHub.
 2. Import project at [vercel.com/new](https://vercel.com/new).
 3. Configure environment variables (`GITHUB_PAT`, `GROQ_API_KEY`).
-4. Deploy.
+4. Click **Deploy**.
 
-### Cloudflare Workers
-
-```bash
-cd worker
-npm install
-npx wrangler secret put GITHUB_PAT
-npx wrangler secret put GROQ_API_KEY
-cd ..
-powershell -File deploy-cloudflare.ps1
-```
+Vercel automatically builds the frontend and routes API requests to Vercel Edge Functions.
 
 ---
 
@@ -85,7 +73,7 @@ powershell -File deploy-cloudflare.ps1
 dev-analyzer/
 ├── api/                    Edge API function
 ├── frontend/               React + Vite UI application
-├── worker/                 Cloudflare Worker API engine
+├── worker/                 Core deterministic backend engine
 ├── CONTRIBUTING.md         Contribution guidelines
 ├── CODE_OF_CONDUCT.md      Community behavior standards
 ├── LICENSE                 MIT License
