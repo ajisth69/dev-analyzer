@@ -8,7 +8,8 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "types": []
   },
-  "include": ["api/**/*.ts", "worker/src/**/*.ts"]
+  "include": ["api/**/*.ts"]
 }
