@@ -36,3 +36,5 @@ worker/scratch/
 .DS_Store
 Thumbs.db
 coverage/
+.vercel
+.env*

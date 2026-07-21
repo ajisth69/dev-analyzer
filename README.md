@@ -1,127 +1,103 @@
-# 🔬 Dev Analyzer
+# Dev Analyzer
 
-> Deterministic Analysis Engine for GitHub developers & repositories.
-> Frontend + Backend deploy together. One URL. One command.
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fajisth69%2Fdev-analyzer&env=GITHUB_PAT,GROQ_API_KEY&envDescription=GitHub%20PAT%20and%20Groq%20API%20Key%20required&envLink=https%3A%2F%2Fgithub.com%2Fsettings%2Ftokens&project-name=dev-analyzer&repository-name=dev-analyzer)
-
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/ajisth69/dev-analyzer)
+Deterministic analysis engine for GitHub developers and repositories. Lightweight, stateless architecture with dual Cloudflare Worker and Vercel support.
 
 ---
 
-## ⚡ One-Click Deploy
+## Features
 
-### ▲ Vercel (Easiest)
-
-Click the button above, or:
-
-1. Fork/push this repo to GitHub
-2. Go to [vercel.com/new](https://vercel.com/new) → Import your repo
-3. Add environment variables:
-
-| Variable | Value |
-|----------|-------|
-| `GITHUB_PAT` | Your GitHub token ([get one here](https://github.com/settings/tokens)) |
-| `GROQ_API_KEY` | Your Groq key ([get one here](https://console.groq.com)) |
-
-4. Click **Deploy** ✅
-
-Vercel auto-builds the frontend, routes `/api/*` to the Edge Function.
-Same backend code. One URL. Zero config.
+- Developer Analysis: Evaluates GitHub user profiles across key performance metrics.
+- Repository Analysis: Provides technical depth and maintenance scores for any public repository.
+- Battle Mode: Head-to-head metrics comparison between developers or repositories.
+- Roast Mode: AI-generated technical feedback based on profile activity.
+- Intelligence Reports: Per-category metrics breakdown and deterministic scoring.
+- Export Capabilities: Generate downloadable visual summary cards.
+- Stateless Architecture: Zero database dependency, real-time GitHub API aggregation.
 
 ---
 
-### ☁️ Cloudflare Workers
+## Commits
 
-Frontend + API served from a single Cloudflare Worker.
+This project follows conventional commit standard for git commit history:
 
+- `feat`: New features or capabilities
+- `fix`: Bug fixes and corrections
+- `docs`: Documentation updates
+- `refactor`: Code restructuring without functional changes
+- `chore`: Build processes, dependencies, or maintenance
+
+---
+
+## Environment Variables
+
+| Variable | Description | Source |
+| --- | --- | --- |
+| `GITHUB_PAT` | GitHub Personal Access Token | [github.com/settings/tokens](https://github.com/settings/tokens) |
+| `GROQ_API_KEY` | Groq API Key | [console.groq.com](https://console.groq.com) |
+
+---
+
+## Quickstart
+
+### Local Development
+
+1. Start backend worker:
 ```bash
-# Set secrets (first time only)
-cd worker && npm install
-npx wrangler login
-npx wrangler secret put GITHUB_PAT
-npx wrangler secret put GROQ_API_KEY
-cd ..
-
-# One-click deploy (builds frontend + deploys everything)
-# Windows:
-powershell -File deploy-cloudflare.ps1
-
-# macOS/Linux:
-bash deploy-cloudflare.sh
-```
-
-One command. One URL. Done.
-
----
-
-## 🛠️ Local Development
-
-```bash
-# Terminal 1 — Backend
 cd worker
 npm install
-# Create .dev.vars with:
-#   GITHUB_PAT=ghp_xxx
-#   GROQ_API_KEY=gsk_xxx
 npx wrangler dev --local --port 8787
+```
 
-# Terminal 2 — Frontend (auto-proxies /api → worker)
+2. Start frontend application:
+```bash
 cd frontend
 npm install
 npm run dev
-# → http://localhost:5173
 ```
 
 ---
 
-## 🔑 Required Secrets
+## Deployment
 
-| Secret | Where to get |
-|--------|-------------|
-| `GITHUB_PAT` | [github.com/settings/tokens](https://github.com/settings/tokens) — needs `read:user`, `repo` |
-| `GROQ_API_KEY` | [console.groq.com](https://console.groq.com) — free tier works |
+### Vercel
+
+1. Fork repository to GitHub.
+2. Import project at [vercel.com/new](https://vercel.com/new).
+3. Configure environment variables (`GITHUB_PAT`, `GROQ_API_KEY`).
+4. Deploy.
+
+### Cloudflare Workers
+
+```bash
+cd worker
+npm install
+npx wrangler secret put GITHUB_PAT
+npx wrangler secret put GROQ_API_KEY
+cd ..
+powershell -File deploy-cloudflare.ps1
+```
 
 ---
 
-## 📁 Structure
+## Project Structure
 
 ```
 dev-analyzer/
-├── api/                        ← Vercel Edge Function (wraps worker)
-│   └── handler.ts
-├── worker/                     ← Cloudflare Worker (core backend)
-│   ├── src/worker.ts           ← All API logic
-│   ├── src/analysisCore.ts     ← Deterministic engine
-│   ├── wrangler.toml
-│   └── .dev.vars               ← Local secrets (git-ignored)
-├── frontend/                   ← React + Vite + Tailwind
-│   ├── src/
-│   └── dist/                   ← Built output
-├── deploy-cloudflare.ps1       ← One-click deploy (Windows)
-├── deploy-cloudflare.sh        ← One-click deploy (macOS/Linux)
-├── vercel.json                 ← Vercel config (auto-detected)
-└── README.md
+├── api/                    Edge API function
+├── frontend/               React + Vite UI application
+├── worker/                 Cloudflare Worker API engine
+├── CONTRIBUTING.md         Contribution guidelines
+├── CODE_OF_CONDUCT.md      Community behavior standards
+├── LICENSE                 MIT License
+├── SECURITY.md             Vulnerability reporting policy
+└── README.md               Project documentation
 ```
 
-`api/handler.ts` imports `worker/src/worker.ts` directly — same backend, both platforms, zero duplication.
-
 ---
 
-## 🎯 Features
+## Governance & Community
 
-| Feature | Description |
-|---------|-------------|
-| 👤 Dev Analysis | Score any GitHub profile with 10+ metrics |
-| 📦 Repo Analysis | Deep dive into any repository |
-| ⚔️ Battle Mode | Compare devs or repos head-to-head |
-| 🔥 Roast Mode | Savage, funny code roasts |
-| 📊 Intelligence Report | Per-category verdicts |
-| 📸 Export | Screenshot any report as PNG |
-| 🚫 No Database | Fully stateless |
-
----
-
-## 📝 License
-
-MIT © [ajisth69](https://github.com/ajisth69)
+- [Contributing](CONTRIBUTING.md)
+- [Security Policy](SECURITY.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [License](LICENSE) (MIT License)
