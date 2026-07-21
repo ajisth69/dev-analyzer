@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#1E1B4B" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FCD34D" />
+      <stop offset="50%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2.5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Squircle Badge -->
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#bgGrad)" stroke="url(#goldGrad)" stroke-width="2.5" />
+
+  <!-- Code Bracket Left -->
+  <path d="M 20 22 L 11 32 L 20 42" stroke="url(#goldGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Code Bracket Right -->
+  <path d="M 44 22 L 53 32 L 44 42" stroke="url(#goldGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Central AI Energy Lightning Spark -->
+  <path d="M 34 16 L 25 33 L 33 33 L 30 48 L 41 30 L 33 30 Z" fill="url(#goldGrad)" filter="url(#glow)" />
+</svg>

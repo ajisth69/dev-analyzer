@@ -1,15 +1,9 @@
 import { CompareDevsResponse, CompareResponse } from '../hooks/useDevAnalyzer';
 import { DevRadarChart } from './RadarChart';
 import { createLocalFeaturePack, createBattleInsights, LocalFeaturePack } from '../utils/localFeatures';
-import { TagPills, ScoreRing, WinnerBadge } from './UI';
+import { TagPills, WinnerBadge } from './UI';
 import { AIAnalysisPanel } from './AIAnalysisPanel';
 import { Trophy, BarChart3, Users, ClipboardCheck } from 'lucide-react';
-
-function formatDevIq(iq: number) {
-  if (iq >= 1_000_000) return `${(iq / 1_000_000).toFixed(1)}M`;
-  if (iq >= 1_000) return `${(iq / 1_000).toFixed(1)}K`;
-  return iq.toString();
-}
 
 function getWinner(a: number, b: number) { return a > b ? 1 : b > a ? 2 : 0; }
 
@@ -113,11 +107,11 @@ function LanguageUsageBattle({ left, right }: { left: LocalFeaturePack; right: L
 }
 
 interface BattleCardProps {
-  title: string; sub?: string; iq: number; algorithmicScore: number;
+  title: string; sub?: string;
   isWinner: boolean; tags: string[]; summary: string;
   accentColor: string; glowClass: string; side: 1 | 2;
 }
-function BattleCard({ title, sub, iq, algorithmicScore, isWinner, tags, summary, accentColor, glowClass, side }: BattleCardProps) {
+function BattleCard({ title, sub, isWinner, tags, summary, accentColor, glowClass, side }: BattleCardProps) {
   return (
     <div className={`glass rounded-3xl p-7 border transition-all card-hover relative overflow-hidden noise ${isWinner ? `border-[${accentColor}]/40 ${glowClass}` : 'border-white/5'}`}>
       {isWinner && <div className={`orb w-48 h-48 bg-[${accentColor}]/10 -top-10 -right-10`} />}
@@ -126,16 +120,7 @@ function BattleCard({ title, sub, iq, algorithmicScore, isWinner, tags, summary,
         <h3 className="text-3xl font-black text-white tracking-tight mb-5">{title}</h3>
 
         <div className="flex items-center gap-6 mb-5">
-          <ScoreRing value={algorithmicScore} label="Algorithm" color={accentColor} />
-          <div className="flex flex-col items-center gap-1">
-            <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-light)', border: '1px solid var(--border-accent)' }}>
-              <span className="text-lg font-black font-mono" style={{ color: 'var(--text-primary)' }}>{formatDevIq(iq)}</span>
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Dev IQ</span>
-          </div>
-          <div className="flex flex-col gap-2">
-            {isWinner && <WinnerBadge color={side === 1 ? 'text-sky-400' : 'text-amber-400'} />}
-          </div>
+          {isWinner && <WinnerBadge color={side === 1 ? 'text-sky-400' : 'text-amber-400'} />}
         </div>
 
         <TagPills tags={tags} />
@@ -165,18 +150,18 @@ export function DevBattle({ data }: { data: CompareDevsResponse }) {
       {/* 3. Language Composition Battle */}
       <LanguageUsageBattle left={p1} right={p2} />
 
-      {/* 4. Algorithm Profile Analysis */}
+      {/* 4. Code Metrics Comparison */}
       <div className="glass border-white/5 rounded-3xl p-8">
-        <h3 className="text-xl font-black text-white text-center mb-6">Algorithm Profile Comparison</h3>
+        <h3 className="text-xl font-black text-white text-center mb-6">Developer Signals Comparison</h3>
         <DevRadarChart compareData={{ name1: dev1.username, name2: dev2.username, metrics1: p1.algorithmicMetrics, metrics2: p2.algorithmicMetrics, color1: '#38bdf8', color2: '#fbbf24' }} />
       </div>
 
       {/* 5. Battle Candidate Cards */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <BattleCard title={`@${dev1.username}`} iq={dev1.devIq} algorithmicScore={p1.algorithmicScore}
+        <BattleCard title={`@${dev1.username}`}
           isWinner={aiW===1} tags={dev1.languageTags} summary={dev1.maturityAnalysis?.summary || dev1.seniorityAnalysis?.summary || ''}
           accentColor="#38bdf8" glowClass="glow-blue" side={1} />
-        <BattleCard title={`@${dev2.username}`} iq={dev2.devIq} algorithmicScore={p2.algorithmicScore}
+        <BattleCard title={`@${dev2.username}`}
           isWinner={aiW===2} tags={dev2.languageTags} summary={dev2.maturityAnalysis?.summary || dev2.seniorityAnalysis?.summary || ''}
           accentColor="#fbbf24" glowClass="glow-amber" side={2} />
       </div>
@@ -188,14 +173,14 @@ export function DevBattle({ data }: { data: CompareDevsResponse }) {
             <span className="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
             @{dev1.username}'s Intelligence Report
           </h4>
-          <AIAnalysisPanel {...dev1} />
+          <AIAnalysisPanel {...dev1} kind="dev" />
         </div>
         <div className="glass border-white/5 rounded-3xl p-6">
           <h4 className="text-base font-black text-white mb-4 flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
             @{dev2.username}'s Intelligence Report
           </h4>
-          <AIAnalysisPanel {...dev2} />
+          <AIAnalysisPanel {...dev2} kind="dev" />
         </div>
       </div>
     </div>
@@ -228,10 +213,10 @@ export function RepoBattle({ data }: { data: CompareResponse }) {
 
       {/* 5. Battle Candidate Cards */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <BattleCard title={repo1.repoName} sub={repo1.owner} iq={repo1.devIq} algorithmicScore={p1.algorithmicScore}
+        <BattleCard title={repo1.repoName} sub={repo1.owner}
           isWinner={aiW===1} tags={repo1.languageTags} summary={repo1.maturityAnalysis?.summary || repo1.seniorityAnalysis?.summary || ''}
           accentColor="#f43f5e" glowClass="glow-rose" side={1} />
-        <BattleCard title={repo2.repoName} sub={repo2.owner} iq={repo2.devIq} algorithmicScore={p2.algorithmicScore}
+        <BattleCard title={repo2.repoName} sub={repo2.owner}
           isWinner={aiW===2} tags={repo2.languageTags} summary={repo2.maturityAnalysis?.summary || repo2.seniorityAnalysis?.summary || ''}
           accentColor="#38bdf8" glowClass="glow-blue" side={2} />
       </div>
@@ -243,14 +228,14 @@ export function RepoBattle({ data }: { data: CompareResponse }) {
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
             {repo1.repoName} Intelligence Report
           </h4>
-          <AIAnalysisPanel {...repo1} />
+          <AIAnalysisPanel {...repo1} kind="repo" />
         </div>
         <div className="glass border-white/5 rounded-3xl p-6">
           <h4 className="text-base font-black text-white mb-4 flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
             {repo2.repoName} Intelligence Report
           </h4>
-          <AIAnalysisPanel {...repo2} />
+          <AIAnalysisPanel {...repo2} kind="repo" />
         </div>
       </div>
     </div>

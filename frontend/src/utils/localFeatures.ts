@@ -174,12 +174,14 @@ function clamp(value: number, min = 0, max = 100) {
 }
 
 function gradeFromScore(score: number) {
+  if (score >= 95) return 'S';
   if (score >= 88) return 'A+';
   if (score >= 80) return 'A';
-  if (score >= 70) return 'B';
-  if (score >= 58) return 'C';
-  if (score >= 44) return 'D';
-  return 'E';
+  if (score >= 72) return 'B+';
+  if (score >= 65) return 'B';
+  if (score >= 50) return 'C';
+  if (score >= 35) return 'D';
+  return 'F';
 }
 
 function isInsightItem(item: InsightItem | null): item is InsightItem {

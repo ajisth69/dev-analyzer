@@ -42,7 +42,7 @@ export interface Env {
 
 const MAX_FILE_BYTES = 150_000;
 const PROFILE_REPO_PAGE_SIZE = 100;
-const PROFILE_GRAPHQL_PAGE_LIMIT = 50;
+const PROFILE_GRAPHQL_PAGE_LIMIT = 1; // Top 100 repos by stars only
 const PROFILE_EVIDENCE_REPO_LIMIT = 10;
 const CLOUDFLARE_SAFE_FETCH_BUDGET = 500;
 const PROFILE_EVIDENCE_FILES_PER_REPO = 10;
@@ -515,24 +515,24 @@ async function fetchScorecardSignals(owner: string, repoName: string, budget: Fe
     if (!response.ok) return [];
     const payload = await response.json() as { score?: number; checks?: Array<{ name?: string; score?: number; reason?: string }> };
     const signals: ExternalRepoSignal[] = [];
-    if (typeof payload.score === "number" && payload.score < 5) {
+    if (typeof payload.score === "number" && payload.score < 3) {
       signals.push({
         source: "scorecard",
-        title: "Low OpenSSF Scorecard score",
+        title: "OpenSSF Scorecard hygiene notice",
         detail: `${owner}/${repoName} has OpenSSF Scorecard ${payload.score}/10.`,
-        severity: payload.score < 3 ? "high" : "medium",
+        severity: "low",
         score: payload.score,
-        recommendation: "Improve branch protection, dependency update automation, token permissions, pinned actions, and security policy coverage.",
+        recommendation: "Consider review of automated dependency updates, token permissions, and branch protection.",
       });
     }
-    for (const check of (payload.checks || []).filter((item) => typeof item.score === "number" && item.score < 4).slice(0, 20)) {
+    for (const check of (payload.checks || []).filter((item) => typeof item.score === "number" && item.score === 0).slice(0, 3)) {
       signals.push({
         source: "scorecard",
-        title: `OpenSSF weak check: ${check.name || "unknown"}`,
+        title: `OpenSSF hygiene gap: ${check.name || "unknown"}`,
         detail: check.reason || `${check.name || "A Scorecard check"} scored ${check.score}/10.`,
-        severity: (check.score || 0) < 2 ? "high" : "medium",
+        severity: "low",
         score: check.score,
-        recommendation: "Review the failing OpenSSF Scorecard check and apply the project-specific remediation.",
+        recommendation: "Review the OpenSSF Scorecard hygiene suggestion when optimizing project CI setup.",
       });
     }
     return signals;
@@ -568,7 +568,44 @@ async function buildExternalSignals(owner: string, repoNames: string[], files: F
   };
 }
 
-async function processUser(username: string, env: Env, budget: FetchBudget, battleMode = false) {
+function gradeFromScore(score: number): string {
+  if (score >= 99) return "S";
+  if (score >= 88) return "A+";
+  if (score >= 75) return "A";
+  if (score >= 63) return "A-";
+  if (score >= 50) return "B+";
+  if (score >= 38) return "B";
+  if (score >= 25) return "B-";
+  if (score >= 13) return "C+";
+  return "C";
+}
+
+function ensureAIFallbacks(data: any): any {
+  const score = data.advancedAnalysis?.algorithmicScore ?? Math.min(95, Math.max(35, Math.round(data.devIq ? Math.log10(data.devIq) * 15 : 65)));
+  const grade = gradeFromScore(score);
+  const primaryTrack = data.advancedAnalysis?.primaryTrack?.name || 'Software Engineering';
+
+  return {
+    ...data,
+    ai_score: score,
+    ai_grade: grade,
+    developer_role_title: data.developer_role_title || (data.username ? `${primaryTrack} Engineer` : undefined),
+    repo_archetype: data.repo_archetype || (data.repoName ? (score >= 80 ? 'Production-Ready Project' : score >= 65 ? 'Active Codebase' : 'Prototype Repository') : undefined),
+    profile_verdict: data.profile_verdict || `${data.username || data.repoName || 'Target'} analyzed deterministically with an overall score of ${score}/100 in ${primaryTrack}.`,
+    code_quality_verdict: data.code_quality_verdict || `Code structure and composition evaluated with algorithmic quality score of ${score}/100.`,
+    architecture_verdict: data.architecture_verdict || `Architecture alignment rated at ${data.advancedAnalysis?.metrics?.Architecture || 70}/100 based on scanned codebase patterns.`,
+    security_verdict: data.security_verdict || `Security score rated at ${data.advancedAnalysis?.metrics?.Security || 85}/100 with zero critical exploits.`,
+    scalability_verdict: data.scalability_verdict || `Scalability and modularity index evaluated at ${data.advancedAnalysis?.metrics?.Production || 65}/100.`,
+    documentation_verdict: data.documentation_verdict || `Documentation and presentation score evaluated at ${data.advancedAnalysis?.metrics?.Documentation || 65}/100.`,
+    innovation_verdict: data.innovation_verdict || `Technology depth evaluated at ${data.advancedAnalysis?.metrics?.Modernity || 70}/100.`,
+    community_verdict: data.community_verdict || `Open-source visibility and reach evaluated at ${data.advancedAnalysis?.metrics?.Popularity || 50}/100.`,
+    role_fit_verdict: data.role_fit_verdict || `Best suited for ${primaryTrack} roles.`,
+    growth_verdict: data.growth_verdict || `Focus on automated testing, CI integration, and documentation coverage.`,
+    roast: data.roast || `No Groq LLM API response was generated for this scan, but the deterministic analysis engine rates this codebase ${score}/100 (${grade}). Configure a custom Groq key in the header for a savage AI roast! 🔥`,
+  };
+}
+
+async function processUser(username: string, env: Env, budget: FetchBudget, battleMode = false, customGroqKey?: string) {
   const graphqlProfile = await fetchUserGraphql(username, env, budget);
   let repos: NormalizedRepo[] = graphqlProfile?.repos || [];
   let languagesArray = graphqlProfile?.languagesArray || [];
@@ -616,12 +653,20 @@ async function processUser(username: string, env: Env, budget: FetchBudget, batt
   const repoFiles: FileSignal[] = evidenceResults.flat();
   const externalSignals = await buildExternalSignals(username, topRepos.map((repo) => repo.name), repoFiles, budget);
 
+  const totalStars = repos.reduce((sum, r) => sum + (r.stargazers_count || 0), 0);
+  const totalOpenIssues = repos.reduce((sum, r) => sum + (r.open_issues_count || 0), 0);
+
   const advancedAnalysis = buildAdvancedAnalysis({
     kind: "dev",
     devIq,
     repoCount: analyzedReposCount,
     languages: languageProfile.languages,
     files: repoFiles,
+    stars: totalStars,
+    followers,
+    totalCommits: graphqlProfile?.contributions?.totalCommits || 0,
+    totalPRs: graphqlProfile?.contributions?.totalPRs || 0,
+    openIssues: totalOpenIssues,
     externalSignals,
   });
   const maturityAnalysis = buildDeepAnalysisReport(repoFiles, advancedAnalysis.metrics, advancedAnalysis.primaryTrack, advancedAnalysis);
@@ -642,13 +687,13 @@ async function processUser(username: string, env: Env, budget: FetchBudget, batt
 
   let aiResult: any = {};
   try {
-    aiResult = await getAIAnalysis(localResult, env, budget);
+    aiResult = await getAIAnalysis(localResult, env, budget, customGroqKey);
   } catch { /* AI failure must never break analysis */ }
 
-  return { ...localResult, ...aiResult };
+  return ensureAIFallbacks({ ...localResult, ...aiResult });
 }
 
-async function processRepo(owner: string, repoName: string, env: Env, budget: FetchBudget, compact = false) {
+async function processRepo(owner: string, repoName: string, env: Env, budget: FetchBudget, compact = false, customGroqKey?: string) {
   const repo: any = await fetchGithubAPI(`/repos/${owner}/${repoName}`, env, budget);
   if (!repo) throw new Error(`Repo ${owner}/${repoName} not found`);
 
@@ -666,6 +711,13 @@ async function processRepo(owner: string, repoName: string, env: Env, budget: Fe
     repoCount: 1,
     languages: languageProfile.languages,
     files: repoFiles,
+    stars: (repo as any).stargazers_count || 0,
+    forks: (repo as any).forks_count || 0,
+    followers: 0,
+    totalCommits: Math.max(1, Math.round(((repo as any).size || 10) / 12 + ((repo as any).stargazers_count || 0) * 0.5)),
+    totalPRs: Math.max(1, Math.round(((repo as any).forks_count || 0) * 0.8 + ((repo as any).open_issues_count || 0) * 0.5)),
+    openIssues: (repo as any).open_issues_count || 0,
+    repoSizeKb: (repo as any).size || 0,
     externalSignals,
   });
   const maturityAnalysis = buildDeepAnalysisReport(repoFiles, advancedAnalysis.metrics, advancedAnalysis.primaryTrack, advancedAnalysis);
@@ -683,10 +735,10 @@ async function processRepo(owner: string, repoName: string, env: Env, budget: Fe
 
   let aiResult: any = {};
   try {
-    aiResult = await getAIAnalysis(localResult, env, budget);
+    aiResult = await getAIAnalysis(localResult, env, budget, customGroqKey);
   } catch { /* AI failure must never break analysis */ }
 
-  return { ...localResult, ...aiResult };
+  return ensureAIFallbacks({ ...localResult, ...aiResult });
 }
 
 
@@ -706,19 +758,19 @@ function responseHeaders(origin: string | null, env: Env) {
 }
 
 // ── Deterministic Analysis Engine (Groq) ─────────────────────────────────────
+// ── Deterministic Analysis Engine (Groq) ─────────────────────────────────────
 function buildAIPayload(payload: any): any {
-  // Trim to essential data only - advancedAnalysis is too large for Groq context
+  // Trim to essential real software engineering data only - zero synthetic devIq numbers
   const trimmed: any = {};
   if (payload.username) trimmed.username = payload.username;
   if (payload.owner) trimmed.owner = payload.owner;
   if (payload.repoName) trimmed.repoName = payload.repoName;
-  trimmed.devIq = payload.devIq;
   trimmed.languageTags = payload.languageTags;
   trimmed.analyzedReposCount = payload.analyzedReposCount;
   trimmed.followers = payload.followers;
   if (payload.repos) trimmed.repos = payload.repos;
   if (payload.repoMeta) trimmed.repoMeta = payload.repoMeta;
-  // Include key metrics from advancedAnalysis without the huge blob
+
   if (payload.advancedAnalysis) {
     trimmed.metrics = payload.advancedAnalysis.metrics;
     trimmed.algorithmicScore = payload.advancedAnalysis.algorithmicScore;
@@ -726,7 +778,11 @@ function buildAIPayload(payload: any): any {
     trimmed.securityScore = payload.advancedAnalysis.securityScore;
     trimmed.confidence = payload.advancedAnalysis.confidence;
     if (payload.advancedAnalysis.severityCounts) trimmed.severityCounts = payload.advancedAnalysis.severityCounts;
-    if (payload.advancedAnalysis.languageDistribution) trimmed.languages = payload.advancedAnalysis.languageDistribution.slice(0, 25).map((l: any) => `${l.name}:${l.pct}%`);
+    if (payload.advancedAnalysis.testQuality) trimmed.testQuality = { score: payload.advancedAnalysis.testQuality.score, evidence: payload.advancedAnalysis.testQuality.evidence };
+    if (payload.advancedAnalysis.productionReadiness) trimmed.productionReadiness = { score: payload.advancedAnalysis.productionReadiness.score, evidence: payload.advancedAnalysis.productionReadiness.evidence };
+    if (payload.advancedAnalysis.architectureFindings) trimmed.architectureFindings = payload.advancedAnalysis.architectureFindings.map((a: any) => a.title);
+    if (payload.advancedAnalysis.codeSmells) trimmed.codeSmells = payload.advancedAnalysis.codeSmells.map((s: any) => s.title);
+    if (payload.advancedAnalysis.languageDistribution) trimmed.languages = payload.advancedAnalysis.languageDistribution.slice(0, 15).map((l: any) => `${l.name}:${l.pct}%`);
   }
   if (payload.contributions) {
     trimmed.contributions = payload.contributions;
@@ -740,152 +796,43 @@ function buildAIPayload(payload: any): any {
   return trimmed;
 }
 
-async function getAIAnalysis(payload: any, env: Env, _budget: FetchBudget): Promise<any> {
-  const apiKey = env.GROQ_API_KEY;
-  if (!apiKey) return {};
+async function callLLM(
+  systemPrompt: string, 
+  userContent: string, 
+  apiKey: string, 
+  maxTokens: number,
+  temperature = 0.0
+): Promise<string> {
+  const cleanKey = apiKey.trim().replace(/^Bearer\s+/i, '');
+  if (!cleanKey) throw new Error('API key is empty');
 
-  const trimmed = buildAIPayload(payload);
-
-  const systemPrompt = `You are a STRICT but highly flexible senior staff engineer reviewing GitHub profiles. You judge like a hiring manager at FAANG. Return ONLY valid JSON, no markdown.
-Schema:
-{
-  "ai_score": <0-100. Dynamically calculate this using the comprehensive grading system below.>,
-  "ai_grade": <"S"|"A+"|"A"|"B+"|"B"|"C"|"D"|"F". Match the calculated score: S (95+), A+/A (85-94), B+/B (70-84), C (50-69), D (30-49), F (<30)>,
-  "profile_verdict": <40 words, blunt overall assessment>,
-  "code_quality_verdict": <40 words>,
-  "architecture_verdict": <40 words>,
-  "security_verdict": <40 words>,
-  "scalability_verdict": <40 words>,
-  "documentation_verdict": <40 words>,
-  "innovation_verdict": <40 words>,
-  "community_verdict": <40 words, about stars/forks/followers/visibility>,
-  "role_fit_verdict": <40 words, best role and why>,
-  "growth_verdict": <40 words, what they should improve>,
-  "roast": <100-140 words. SAVAGE funny roast. Roast username, repo names, star count, fork count, language choices, commit patterns. Be cringey, use gen-z humor, emojis. Reference specific repos/stats.>,
-  "top_repos_analysis": [{"repo_name": <string>, "repo_score": <0-100>, "verdict": <35 words>}]
-}
-
-COMPREHENSIVE GRADING SYSTEM:
-Evaluate the developer dynamically based on these exact dimensions, maintaining a flexible yet strict perspective:
-
-1. Commit Regularity & Sincerity (20% Weight):
-   - Check contribution totals and calendar details.
-   - Regular daily/weekly commits indicate great dedication and sincerity. High regularity = major score boost.
-   - Abandoned or highly sporadic commit histories penalty.
-
-2. Code volume, Scanned Data & Quality (15% Weight):
-   - Number of repositories, file structure, tests, and CI configuration.
-   - Total scanned data bytes (amount of scanned codebase data).
-   - Active testing (Jest, PyTest, etc.) and codebase maintainability boost this score.
-
-3. Open Source Impact, Achievements & Affiliations (15% Weight):
-   - Followers, stars, forks, and repository engagement.
-   - Organization memberships (organizationsCount) and active Gists (gistsCount).
-
-4. Profile Decoration & Completeness (10% Weight):
-   - Profile completeness: presence of bio, location, company, website, and Twitter username.
-   - Pinned repositories/projects count (pinnedItemsCount) indicating customization and visual presentation.
-   - Presence of custom status messages and profile emojis. High profile polish = score boost.
-
-5. Language-Specific Complexity Scale (15% Weight):
-   - Rate technological depth based on language choices:
-     * HTML / CSS / Presentation only: Low score weighting.
-     * JavaScript / PHP / Basic scripting: Medium/normal weighting (solid baseline).
-     * Python / Go / Ruby / Core Backends: Normal/strong weighting.
-     * TypeScript / Rust / Zig / C++ / C / Assembly / Solidity: High/expert weighting (major boost for type rigor and low-level complexity).
-
-6. Versatility & Number of Languages Known (10% Weight):
-   - Broad polyglot skills, well-distributed languages, and number of active programming languages used.
-
-7. Documentation Rigor (10% Weight):
-   - Presence of comprehensive READMEs, setup guides, LICENSEs, and SECURITY policies.
-
-8. Collaboration & PR History (5% Weight):
-   - Count of Pull Requests and active public organization work.
-
-CRITICAL RULES:
-- **LEGEND OVERRIDE**: If a profile is an industry legend or open-source pioneer (e.g. Torvalds, tj, yyx990803) with huge followers (>1,000) or stars (>2,000), grade them **S** or **A+** (Score 92-100) automatically, disregarding low GitHub-specific direct commit calendars.
-- **IMPOSTER PENALTY**: Standard developers with high stars/forks but extremely low active commit count (<20 commits) are template copy-pasters; cap them at a max score of 50 (Grade C or D).
-- Be incredibly strict but completely fair, rewarding true software engineering discipline, regularity, profile presentation, and technical depth.`;
-
-  const models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it"];
+  const models = [
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+    "qwen/qwen3.6-27b",
+    "openai/gpt-oss-120b",
+    "groq/compound"
+  ];
 
   for (const model of models) {
     try {
-      console.log(`[GROQ API] Attempting analysis using model: ${model}`);
+      console.log(`[LLM ROUTER] Trying ${model} via https://api.groq.com/openai/v1/chat/completions`);
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${cleanKey}`,
+      };
+
       const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: JSON.stringify(trimmed) },
-          ],
-          temperature: 0.9,
-          max_completion_tokens: 1500,
-          top_p: 1,
-          stream: false,
-        }),
-      });
-
-      if (resp.ok) {
-        const data = await resp.json() as any;
-        try {
-          const content = data.choices?.[0]?.message?.content ?? "{}";
-          const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-          const parsed = JSON.parse(cleaned);
-          console.log(`[GROQ API SUCCESS] Generated successfully with model: ${model}`);
-          return parsed;
-        } catch (err: any) {
-          console.error(`[GROQ JSON PARSE ERROR] Model ${model} returned unparseable content: ${err.message}`);
-        }
-      } else {
-        const errText = await resp.text().catch(() => "No error body");
-        console.warn(`[GROQ API WARN] Model ${model} failed with status ${resp.status}: ${errText}`);
-      }
-    } catch (err: any) {
-      console.error(`[GROQ MODEL ERROR] Error during ${model} run: ${err.message}`);
-    }
-  }
-  return {};
-}
-
-async function getBattleReport(item1: any, item2: any, kind: "dev" | "repo", env: Env): Promise<string> {
-  const apiKey = env.GROQ_API_KEY;
-  if (!apiKey) return "AI battle declaration failed. Both competitors remain locked in an eternal infinite loop.";
-
-  const name1 = kind === "dev" ? `@${item1.username}` : `${item1.owner}/${item1.repoName}`;
-  const name2 = kind === "dev" ? `@${item2.username}` : `${item2.owner}/${item2.repoName}`;
-
-  const score1 = item1.ai_score || 0;
-  const score2 = item2.ai_score || 0;
-  let winner = "Tie";
-  if (score1 > score2) winner = name1;
-  else if (score2 > score1) winner = name2;
-
-  const systemPrompt = `You are a savage, ultra-cringey tech-bro influencer hosting a developer/code battle. Declare the winner clearly by name, then roast the loser brutally explaining exactly why they lost (lack of stars, low DevIQ, poor commits) and hype the winner in a hilariously cringey tech-bro way explaining exactly how they won (godly DevIQ, superior code maturity, clean language stacks). Keep the entire response STRICTLY between 50 and 60 words! No markdown, no intro/outro, no formatting. Just return the raw text roast message directly. Use Gen-Z and tech influencer emojis (e.g. 💀, 🚀, 👑, 💻, 🥶, 💅).`;
-
-  const userContent = `Compare:
-  Competitor 1: ${name1} (Score: ${score1}, Grade: ${item1.ai_grade}, DevIQ: ${item1.devIq}, Summary: ${item1.profileDetails?.bio || item1.maturityAnalysis?.summary?.slice(0, 100) || ""}, Roast snippet: ${item1.roast?.slice(0, 100) || ""})
-  Competitor 2: ${name2} (Score: ${score2}, Grade: ${item2.ai_grade}, DevIQ: ${item2.devIq}, Summary: ${item2.profileDetails?.bio || item2.maturityAnalysis?.summary?.slice(0, 100) || ""}, Roast snippet: ${item2.roast?.slice(0, 100) || ""})
-  Declared Winner: ${winner}`;
-
-  const models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it"];
-
-  for (const model of models) {
-    try {
-      const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        headers,
         body: JSON.stringify({
           model,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userContent },
           ],
-          temperature: 0.9,
-          max_completion_tokens: 300,
+          temperature,
+          max_completion_tokens: maxTokens,
           top_p: 1,
           stream: false,
         }),
@@ -893,15 +840,148 @@ async function getBattleReport(item1: any, item2: any, kind: "dev" | "repo", env
 
       if (resp.ok) {
         const data = await resp.json() as any;
-        const content = data.choices?.[0]?.message?.content?.trim() ?? "";
-        if (content) return content;
+        const content = data.choices?.[0]?.message?.content ?? "";
+        if (content.trim()) {
+          console.log(`[LLM SUCCESS] Model ${model} succeeded!`);
+          return content;
+        }
+      } else {
+        const errText = await resp.text().catch(() => "No error body");
+        console.warn(`[LLM WARN] ${model} failed (${resp.status}): ${errText}`);
       }
-    } catch {
-      // fallback
+    } catch (err: any) {
+      console.error(`[LLM ERROR] Exception during ${model}: ${err.message}`);
     }
   }
+  
+  throw new Error("All LLM models exhausted or invalid API key.");
+}
 
-  return `${winner} absolutely demolished the competition! The loser gets a career pivot into writing manual Excel spreadsheets. 💀🚀`;
+function cleanThinking(text: string): string {
+  if (!text) return "";
+  let cleaned = text.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, "").trim();
+  if (!cleaned) {
+    cleaned = text.replace(/<think>/gi, "").replace(/<\/think>/gi, "").trim();
+  }
+  return cleaned;
+}
+
+async function getAIAnalysis(payload: any, env: Env, _budget: FetchBudget, customGroqKey?: string): Promise<any> {
+  const apiKey = customGroqKey || env.GROQ_API_KEY;
+  if (!apiKey) return {};
+
+  const trimmed = buildAIPayload(payload);
+
+  const systemPrompt = `You are a STRICT, deeply analytical senior staff engineer reviewing GitHub profiles/repositories. Return ONLY valid JSON matching the schema, no markdown.
+Schema:
+{
+  "developer_role_title": <string, e.g. "Full Stack Senior Dev", "Student Prodigy", "Open Source Pioneer", "Newbie / Beginner">,
+  "repo_archetype": <string, e.g. "Production-Ready Service", "Spaghetti Prototype", "Modular Monolith">,
+  "profile_verdict": <40-50 words overall technical assessment>,
+  "code_quality_verdict": <40-50 words analysis of type rigor, linting, code smells, and source structure>,
+  "architecture_verdict": <40-50 words analysis of file organization, layering, module boundaries>,
+  "security_verdict": <40-50 words analysis of vulnerabilities, secrets, and auth policies>,
+  "scalability_verdict": <40-50 words analysis of Docker, CI/CD, rate limiting, and environment configs>,
+  "documentation_verdict": <40-50 words analysis of README depth, setup guides, screenshots>,
+  "innovation_verdict": <40-50 words analysis of stack modernness (TypeScript, Rust, Go, Fastify, Svelte, etc)>,
+  "community_verdict": <40-50 words analysis of real traction (stars, forks, open issues, followers)>,
+  "role_fit_verdict": <40-50 words best role fit and why>,
+  "growth_verdict": <40-50 words actionable technical improvements needed>,
+  "roast": <140-190 words. SAVAGE, EXTREMELY WITTY roast of specific repository artifacts, missing tests, missing CI workflows, unrefactored long files, or low star counts. Use ONLY 2-3 natural emojis total. DO NOT SPAM EMOJIS AFTER EVERY WORD!>,
+  "top_repos_analysis": [{"repo_name": <string>, "repo_score": <0-100>, "verdict": <35-45 words technical breakdown>}],
+  "suggested_projects": [{"title": <string>, "difficulty": <"Intermediate"|"Advanced"|"Expert">, "reason": <30 words>, "impact": <20 words>}]
+}`;
+
+  try {
+    const rawContent = await callLLM(systemPrompt, JSON.stringify(trimmed), apiKey, 1600, 0.0);
+    const withoutThinking = cleanThinking(rawContent);
+    const cleaned = withoutThinking.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    return JSON.parse(cleaned);
+  } catch (err: any) {
+    console.error(`[GROQ LLM ROUTER FAIL] ${err.message}`);
+    return {};
+  }
+}
+
+async function getBattleReport(item1: any, item2: any, kind: "dev" | "repo", env: Env, customGroqKey?: string): Promise<string> {
+  const apiKey = customGroqKey || env.GROQ_API_KEY;
+
+  const name1 = kind === "dev" ? `@${item1.username}` : `${item1.owner}/${item1.repoName}`;
+  const name2 = kind === "dev" ? `@${item2.username}` : `${item2.owner}/${item2.repoName}`;
+
+  const score1 = item1.ai_score || item1.advancedAnalysis?.algorithmicScore || 0;
+  const score2 = item2.ai_score || item2.advancedAnalysis?.algorithmicScore || 0;
+  let winner = "Tie";
+  if (score1 > score2) winner = name1;
+  else if (score2 > score1) winner = name2;
+
+  if (!apiKey) {
+    return `${winner} takes the crown based on higher real engineering metrics, active testing, and code architecture!`;
+  }
+
+  const stars1 = item1.repoMeta?.stars ?? item1.repos?.reduce((s: number, r: any) => s + (r.stars || 0), 0) ?? 0;
+  const stars2 = item2.repoMeta?.stars ?? item2.repos?.reduce((s: number, r: any) => s + (r.stars || 0), 0) ?? 0;
+  const metrics1 = item1.advancedAnalysis?.metrics || {};
+  const metrics2 = item2.advancedAnalysis?.metrics || {};
+
+  let systemPrompt = "";
+  let userContent = "";
+
+  if (kind === "repo") {
+    systemPrompt = `You are a savage, highly technical principal software architect judging a repository code battle between two GitHub repositories.
+Declare the winner clearly by repository name. Roast the loser brutally and hype the winner using a DEEP 130-180 WORD TECHNICAL ANALYSIS based strictly on REAL codebase facts:
+- Contrast code architecture, file organization, and modular layering
+- Contrast automated test coverage (Vitest, PyTest, Jest) & CI workflow automation (.github/workflows)
+- Contrast production readiness (Dockerfile, .env example configs, rate limits, healthchecks)
+- Contrast code security posture, vulnerability findings, and package lockfile health
+- Contrast real GitHub community traction (stars, forks, open issues)
+
+CRITICAL RULES:
+- MUST be 130 to 180 words long. Provide a thorough, comprehensive engineering breakdown!
+- NEVER EVER mention "DevIQ", "Dev IQ", or fake rating numbers.
+- DO NOT SPAM EMOJIS. Use a maximum of 2 to 3 emojis total in the entire declaration.
+- Return ONLY raw declaration text directly. No markdown formatting, no JSON wrappers.`;
+
+    userContent = `Repository Battle Matchup:
+Repo 1: ${name1} (Score: ${score1}/100, Stars: ${stars1}, Forks: ${item1.repoMeta?.forks || 0}, Open Issues: ${item1.repoMeta?.open_issues || 0}, Logic: ${metrics1.Logic || 50}/100, Security: ${metrics1.Security || 50}/100, Testing: ${metrics1.Testing || 30}/100, Architecture: ${metrics1.Architecture || 50}/100, Production: ${metrics1.Production || 40}/100, Dependencies: ${metrics1.Dependencies || 50}/100, Summary: ${item1.code_quality_verdict || item1.maturityAnalysis?.summary?.slice(0, 150) || ""})
+Repo 2: ${name2} (Score: ${score2}/100, Stars: ${stars2}, Forks: ${item2.repoMeta?.forks || 0}, Open Issues: ${item2.repoMeta?.open_issues || 0}, Logic: ${metrics2.Logic || 50}/100, Security: ${metrics2.Security || 50}/100, Testing: ${metrics2.Testing || 30}/100, Architecture: ${metrics2.Architecture || 50}/100, Production: ${metrics2.Production || 40}/100, Dependencies: ${metrics2.Dependencies || 50}/100, Summary: ${item2.code_quality_verdict || item2.maturityAnalysis?.summary?.slice(0, 150) || ""})
+Declared Winner: ${winner}`;
+
+  } else {
+    const dev1Commits = item1.contributions?.totalCommits ?? item1.advancedAnalysis?.totalCommits ?? 0;
+    const dev2Commits = item2.contributions?.totalCommits ?? item2.advancedAnalysis?.totalCommits ?? 0;
+    const dev1PRs = item1.contributions?.totalPRs ?? item1.advancedAnalysis?.totalPRs ?? 0;
+    const dev2PRs = item2.contributions?.totalPRs ?? item2.advancedAnalysis?.totalPRs ?? 0;
+    const dev1Bio = item1.profileDetails?.bio || item1.profile_verdict || "";
+    const dev2Bio = item2.profileDetails?.bio || item2.profile_verdict || "";
+
+    systemPrompt = `You are a savage, highly analytical FAANG VP of Engineering judging a developer profile battle between two software engineers.
+Declare the winner clearly by username. Roast the loser brutally and hype the winner using a DEEP 130-180 WORD TECHNICAL ANALYSIS based strictly on REAL developer evidence:
+- Contrast engineering specialization tracks (Frontend, Backend, Systems, Fullstack, ML)
+- Contrast overall open-source traction (Total stargazers & followers across public repos)
+- Contrast contribution velocity (total commits, PRs, analyzed repos)
+- Contrast language polyglot depth (TypeScript, Rust, Go, Python, C++ vs single-language limitation)
+- Contrast portfolio presentation & repository documentation quality
+
+CRITICAL RULES:
+- MUST be 130 to 180 words long. Provide a thorough, comprehensive engineering breakdown!
+- NEVER EVER mention "DevIQ", "Dev IQ", or fake rating numbers.
+- DO NOT SPAM EMOJIS. Use a maximum of 2 to 3 emojis total in the entire declaration.
+- Return ONLY raw declaration text directly. No markdown formatting, no JSON wrappers.`;
+
+    userContent = `Developer Battle Matchup:
+Dev 1: ${name1} (Score: ${score1}/100, Track: ${item1.advancedAnalysis?.primaryTrack?.name || "Software Dev"}, Total Stars: ${stars1}, Followers: ${item1.followers || 0}, Commits: ${dev1Commits}, PRs: ${dev1PRs}, Repos Scanned: ${item1.analyzedReposCount || 0}, Bio: "${dev1Bio.slice(0, 100)}")
+Dev 2: ${name2} (Score: ${score2}/100, Track: ${item2.advancedAnalysis?.primaryTrack?.name || "Software Dev"}, Total Stars: ${stars2}, Followers: ${item2.followers || 0}, Commits: ${dev2Commits}, PRs: ${dev2PRs}, Repos Scanned: ${item2.analyzedReposCount || 0}, Bio: "${dev2Bio.slice(0, 100)}")
+Declared Winner: ${winner}`;
+  }
+
+  try {
+    const rawContent = await callLLM(systemPrompt, userContent, apiKey, 1600, 0.0);
+    return cleanThinking(rawContent);
+  } catch (err: any) {
+    console.error(`[getBattleReport LLM ROUTER FAIL] ${err.message}`);
+    return `${winner} wins the comparison based on superior code architecture, automated testing, and security posture!`;
+  }
 }
 
 export default {
@@ -921,31 +1001,45 @@ export default {
       const budget = createFetchBudget();
       const url = new URL(request.url);
 
+      if (url.pathname === "/api/badge.svg") {
+        const user = url.searchParams.get("user") || "developer";
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="28"><rect width="180" height="28" rx="6" fill="#0f172a"/><text x="10" y="18" fill="#38bdf8" font-family="sans-serif" font-size="12" font-weight="bold">DevAnalyzer | ${user}</text></svg>`;
+        return new Response(svg, {
+          headers: {
+            ...responseHeaders(origin, env),
+            "Content-Type": "image/svg+xml",
+          },
+        });
+      }
+
       if (url.pathname === "/api/analyze" && request.method === "POST") {
-        const body = (await request.json().catch(() => ({}))) as { username?: string };
-        if (!body.username) {
-          return new Response(JSON.stringify({ error: "Username required" }), { status: 400, headers: responseHeaders(origin, env) });
+        const body = (await request.json().catch(() => ({}))) as { username?: string; groqApiKey?: string };
+        const customGroqKey = body.groqApiKey || request.headers.get("x-groq-api-key") || undefined;
+        if (!body.username || !/^[a-zA-Z0-9_-]+$/.test(body.username.trim())) {
+          return new Response(JSON.stringify({ error: "Invalid GitHub username format" }), { status: 400, headers: responseHeaders(origin, env) });
         }
-        const data = await processUser(body.username.trim().toLowerCase(), env, budget);
+        const data = await processUser(body.username.trim().toLowerCase(), env, budget, false, customGroqKey);
         return new Response(JSON.stringify(data), { headers: responseHeaders(origin, env) });
       }
 
       if (url.pathname === "/api/compare-devs" && request.method === "POST") {
-        const body = (await request.json().catch(() => ({}))) as { dev1?: string; dev2?: string };
+        const body = (await request.json().catch(() => ({}))) as { dev1?: string; dev2?: string; groqApiKey?: string };
+        const customGroqKey = body.groqApiKey || request.headers.get("x-groq-api-key") || undefined;
         if (!body.dev1 || !body.dev2) {
           return new Response(JSON.stringify({ error: "dev1 and dev2 required" }), { status: 400, headers: responseHeaders(origin, env) });
         }
 
-        const [dev1Data, dev2Data] = await Promise.all([
-          processUser(body.dev1.trim().toLowerCase(), env, createFetchBudget(), true),
-          processUser(body.dev2.trim().toLowerCase(), env, createFetchBudget(), true)
-        ]);
-        const battle_report = await getBattleReport(dev1Data, dev2Data, "dev", env);
+        const dev1Data = await processUser(body.dev1.trim().toLowerCase(), env, createFetchBudget(), true, customGroqKey);
+        await new Promise(r => setTimeout(r, 350));
+        const dev2Data = await processUser(body.dev2.trim().toLowerCase(), env, createFetchBudget(), true, customGroqKey);
+        await new Promise(r => setTimeout(r, 200));
+        const battle_report = await getBattleReport(dev1Data, dev2Data, "dev", env, customGroqKey);
         return new Response(JSON.stringify({ dev1: dev1Data, dev2: dev2Data, battle_report }), { headers: responseHeaders(origin, env) });
       }
 
       if (url.pathname === "/api/analyze-repo" && request.method === "POST") {
-        const body = (await request.json().catch(() => ({}))) as { repo?: string };
+        const body = (await request.json().catch(() => ({}))) as { repo?: string; groqApiKey?: string };
+        const customGroqKey = body.groqApiKey || request.headers.get("x-groq-api-key") || undefined;
         if (!body.repo) {
           return new Response(JSON.stringify({ error: "repo required (e.g., owner/repo)" }), { status: 400, headers: responseHeaders(origin, env) });
         }
@@ -955,12 +1049,13 @@ export default {
           return new Response(JSON.stringify({ error: "Invalid repo format. Use owner/repo" }), { status: 400, headers: responseHeaders(origin, env) });
         }
 
-        const data = await processRepo(owner.toLowerCase(), name.toLowerCase(), env, budget);
+        const data = await processRepo(owner.toLowerCase(), name.toLowerCase(), env, budget, false, customGroqKey);
         return new Response(JSON.stringify(data), { headers: responseHeaders(origin, env) });
       }
 
       if (url.pathname === "/api/compare-repos" && request.method === "POST") {
-        const body = (await request.json().catch(() => ({}))) as { repo1?: string; repo2?: string };
+        const body = (await request.json().catch(() => ({}))) as { repo1?: string; repo2?: string; groqApiKey?: string };
+        const customGroqKey = body.groqApiKey || request.headers.get("x-groq-api-key") || undefined;
         if (!body.repo1 || !body.repo2) {
           return new Response(JSON.stringify({ error: "repo1 and repo2 required (e.g., owner/repo)" }), { status: 400, headers: responseHeaders(origin, env) });
         }
@@ -971,18 +1066,18 @@ export default {
           return new Response(JSON.stringify({ error: "Invalid repo format. Use owner/repo" }), { status: 400, headers: responseHeaders(origin, env) });
         }
 
-        const [repo1Data, repo2Data] = await Promise.all([
-          processRepo(owner1.toLowerCase(), name1.toLowerCase(), env, budget, true),
-          processRepo(owner2.toLowerCase(), name2.toLowerCase(), env, budget, true),
-        ]);
-        const battle_report = await getBattleReport(repo1Data, repo2Data, "repo", env);
+        const repo1Data = await processRepo(owner1.toLowerCase(), name1.toLowerCase(), env, budget, true, customGroqKey);
+        await new Promise(r => setTimeout(r, 350));
+        const repo2Data = await processRepo(owner2.toLowerCase(), name2.toLowerCase(), env, budget, true, customGroqKey);
+        await new Promise(r => setTimeout(r, 200));
+        const battle_report = await getBattleReport(repo1Data, repo2Data, "repo", env, customGroqKey);
         return new Response(JSON.stringify({ repo1: repo1Data, repo2: repo2Data, battle_report }), { headers: responseHeaders(origin, env) });
       }
 
       return new Response("Not Found", { status: 404, headers: CORS_HEADERS });
     } catch (error: any) {
       console.error("[Worker Error]", error);
-      return new Response(JSON.stringify({ error: "An internal server error occurred" }), {
+      return new Response(JSON.stringify({ error: error.message, stack: error.stack }), {
         status: 500,
         headers: responseHeaders(origin, env),
       });

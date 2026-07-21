@@ -47,6 +47,13 @@ export interface AdvancedAnalysis {
   deepAnalysis?: { summary: string; architecture: string; modernity: string; security: string; scalability: string; remarks: Array<{ topic: string; remark: string }>; };
 }
 
+export interface SuggestedProject {
+  title: string;
+  difficulty: string;
+  reason: string;
+  impact: string;
+}
+
 export interface AIRepoAnalysis { repo_name: string; repo_score: number; verdict: string; }
 
 export interface AnalyzerResponse {
@@ -59,6 +66,8 @@ export interface AnalyzerResponse {
   advancedAnalysis?: AdvancedAnalysis;
   ai_score?: number;
   ai_grade?: string;
+  developer_role_title?: string;
+  repo_archetype?: string;
   profile_verdict?: string;
   code_quality_verdict?: string;
   architecture_verdict?: string;
@@ -71,6 +80,7 @@ export interface AnalyzerResponse {
   growth_verdict?: string;
   roast?: string;
   top_repos_analysis?: AIRepoAnalysis[];
+  suggested_projects?: SuggestedProject[];
 }
 
 export interface RepoAnalysisResponse {
@@ -81,8 +91,11 @@ export interface RepoAnalysisResponse {
   maturityAnalysis?: { summary: string; metrics: AnalysisMetrics; architecture: string; modernity: string; security: string; scalability: string; remarks: Array<{ topic: string; remark: string }>; };
   seniorityAnalysis?: { summary: string; metrics?: AnalysisMetrics; architecture?: string; modernity?: string; security?: string; scalability?: string; remarks?: Array<{ topic: string; remark: string }>; };
   advancedAnalysis?: AdvancedAnalysis;
+  repoMeta?: { stars: number; forks: number; watchers: number; open_issues: number; description: string };
   ai_score?: number;
   ai_grade?: string;
+  developer_role_title?: string;
+  repo_archetype?: string;
   profile_verdict?: string;
   code_quality_verdict?: string;
   architecture_verdict?: string;
@@ -95,6 +108,7 @@ export interface RepoAnalysisResponse {
   growth_verdict?: string;
   roast?: string;
   top_repos_analysis?: AIRepoAnalysis[];
+  suggested_projects?: SuggestedProject[];
 }
 
 export interface CompareResponse { repo1: RepoAnalysisResponse; repo2: RepoAnalysisResponse; battle_report?: string; }
@@ -104,6 +118,48 @@ const WORKER_URL = '/api/analyze';
 const ANALYZE_REPO_URL = '/api/analyze-repo';
 const COMPARE_URL = '/api/compare-repos';
 const COMPARE_DEVS_URL = '/api/compare-devs';
+
+export const DAILY_FREE_LIMIT = 3;
+
+export function getDailyUsage(): { count: number; date: string } {
+  const today = new Date().toISOString().split('T')[0];
+  try {
+    const raw = localStorage.getItem('dev_analyzer_daily_usage');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.date === today) return parsed;
+    }
+  } catch {}
+  return { count: 0, date: today };
+}
+
+export function incrementDailyUsage() {
+  const today = new Date().toISOString().split('T')[0];
+  const current = getDailyUsage();
+  const next = { count: current.date === today ? current.count + 1 : 1, date: today };
+  try {
+    localStorage.setItem('dev_analyzer_daily_usage', JSON.stringify(next));
+  } catch {}
+  return next;
+}
+
+export function getCustomGroqKey(): string {
+  try {
+    return localStorage.getItem('dev_analyzer_custom_groq_key') || '';
+  } catch {
+    return '';
+  }
+}
+
+export function setCustomGroqKey(key: string) {
+  try {
+    if (key.trim()) {
+      localStorage.setItem('dev_analyzer_custom_groq_key', key.trim());
+    } else {
+      localStorage.removeItem('dev_analyzer_custom_groq_key');
+    }
+  } catch {}
+}
 
 export function useDevAnalyzer() {
   const [loading, setLoading] = useState(false);
@@ -115,43 +171,71 @@ export function useDevAnalyzer() {
 
   const clearAllData = () => { setData(null); setRepoData(null); setCompareData(null); setCompareDevsData(null); };
 
-  const analyze = useCallback(async (username: string) => {
+  const analyze = useCallback(async (username: string, customKey?: string) => {
     if (!username.trim()) return;
     setLoading(true); setError(null); clearAllData();
+    const groqKey = customKey || getCustomGroqKey();
     try {
-      const response = await fetch(WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: username.trim().toLowerCase() }) });
+      const response = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username.trim().toLowerCase(), groqApiKey: groqKey || undefined }),
+      });
       if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error((e as { error?: string }).error || `HTTP ${response.status}`); }
-      setData(await response.json());
+      const json = await response.json();
+      incrementDailyUsage();
+      setData(json);
     } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to analyze'); } finally { setLoading(false); }
   }, []);
 
-  const analyzeRepo = useCallback(async (repo: string) => {
+  const analyzeRepo = useCallback(async (repo: string, customKey?: string) => {
     if (!repo.trim()) return;
     setLoading(true); setError(null); clearAllData();
+    const groqKey = customKey || getCustomGroqKey();
     try {
-      const response = await fetch(ANALYZE_REPO_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ repo: repo.trim().toLowerCase() }) });
+      const response = await fetch(ANALYZE_REPO_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repo: repo.trim().toLowerCase(), groqApiKey: groqKey || undefined }),
+      });
       if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error((e as { error?: string }).error || `HTTP ${response.status}`); }
-      setRepoData(await response.json());
+      const json = await response.json();
+      incrementDailyUsage();
+      setRepoData(json);
     } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to analyze repo'); } finally { setLoading(false); }
   }, []);
 
-  const compareRepos = useCallback(async (repo1: string, repo2: string) => {
+  const compareRepos = useCallback(async (repo1: string, repo2: string, customKey?: string) => {
     if (!repo1.trim() || !repo2.trim()) return;
     setLoading(true); setError(null); clearAllData();
+    const groqKey = customKey || getCustomGroqKey();
     try {
-      const response = await fetch(COMPARE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ repo1, repo2 }) });
+      const response = await fetch(COMPARE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repo1: repo1.trim(), repo2: repo2.trim(), groqApiKey: groqKey || undefined }),
+      });
       if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error((e as { error?: string }).error || `HTTP ${response.status}`); }
-      setCompareData(await response.json());
+      const json = await response.json();
+      incrementDailyUsage();
+      setCompareData(json);
     } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to compare repos'); } finally { setLoading(false); }
   }, []);
 
-  const compareDevs = useCallback(async (dev1: string, dev2: string) => {
+  const compareDevs = useCallback(async (dev1: string, dev2: string, customKey?: string) => {
     if (!dev1.trim() || !dev2.trim()) return;
     setLoading(true); setError(null); clearAllData();
+    const groqKey = customKey || getCustomGroqKey();
     try {
-      const response = await fetch(COMPARE_DEVS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dev1, dev2 }) });
+      const response = await fetch(COMPARE_DEVS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dev1: dev1.trim(), dev2: dev2.trim(), groqApiKey: groqKey || undefined }),
+      });
       if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error((e as { error?: string }).error || `HTTP ${response.status}`); }
-      setCompareDevsData(await response.json());
+      const json = await response.json();
+      incrementDailyUsage();
+      setCompareDevsData(json);
     } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to compare devs'); } finally { setLoading(false); }
   }, []);
 

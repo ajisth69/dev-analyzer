@@ -6,12 +6,6 @@ import { createLocalFeaturePack } from '../utils/localFeatures';
 import { TagPills, ScoreRing, DeepAnalysisSummary } from './UI';
 import { AIAnalysisPanel } from './AIAnalysisPanel';
 
-function formatDevIq(iq: number) {
-  if (iq >= 1_000_000) return `${(iq / 1_000_000).toFixed(1)}M`;
-  if (iq >= 1_000) return `${(iq / 1_000).toFixed(1)}K`;
-  return iq.toString();
-}
-
 export function UserProfile({ data }: { data: AnalyzerResponse }) {
   const pack = createLocalFeaturePack(data, 'dev');
   return (
@@ -25,7 +19,14 @@ export function UserProfile({ data }: { data: AnalyzerResponse }) {
               <Github className="w-8 h-8" style={{ color: 'var(--accent)' }} />
             </a>
             <div>
-              <h2 className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>@{data.username}</h2>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>@{data.username}</h2>
+                {data.developer_role_title && (
+                  <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    {data.developer_role_title}
+                  </span>
+                )}
+              </div>
               <p className="text-sm font-mono mt-0.5" style={{ color: 'var(--text-muted)' }}>{data.analyzedReposCount} repos analyzed</p>
             </div>
           </div>
@@ -42,13 +43,6 @@ export function UserProfile({ data }: { data: AnalyzerResponse }) {
               </div>
             )}
             {data.ai_score !== undefined && <ScoreRing value={data.ai_score} label="Score" color="#E8A800" />}
-            <ScoreRing value={pack.algorithmicScore} label="Algorithm" color="#6366f1" />
-            <div className="flex flex-col items-center gap-1">
-              <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-light)', border: '1px solid var(--border-accent)' }}>
-                <span className="text-lg font-black font-mono" style={{ color: 'var(--text-primary)' }}>{formatDevIq(data.devIq)}</span>
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Dev IQ</span>
-            </div>
           </div>
         </div>
         <div className="mt-5 relative">
@@ -58,13 +52,16 @@ export function UserProfile({ data }: { data: AnalyzerResponse }) {
       </div>
 
       <AIAnalysisPanel
+        kind="dev"
         ai_score={data.ai_score} ai_grade={data.ai_grade}
+        developer_role_title={data.developer_role_title} repo_archetype={data.repo_archetype}
         profile_verdict={data.profile_verdict} code_quality_verdict={data.code_quality_verdict}
         architecture_verdict={data.architecture_verdict} security_verdict={data.security_verdict}
         scalability_verdict={data.scalability_verdict} documentation_verdict={data.documentation_verdict}
         innovation_verdict={data.innovation_verdict} community_verdict={data.community_verdict}
         role_fit_verdict={data.role_fit_verdict} growth_verdict={data.growth_verdict}
         roast={data.roast} top_repos_analysis={data.top_repos_analysis}
+        suggested_projects={data.suggested_projects}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -87,7 +84,14 @@ export function RepoProfile({ data }: { data: RepoAnalysisResponse }) {
         <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between relative">
           <div>
             <p className="font-mono text-sm" style={{ color: 'var(--text-muted)' }}>{data.owner}</p>
-            <h2 className="text-3xl font-black tracking-tight gradient-purple">{data.repoName}</h2>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="text-3xl font-black tracking-tight gradient-purple">{data.repoName}</h2>
+              {data.repo_archetype && (
+                <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  {data.repo_archetype}
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-4 sm:gap-6 mt-4 md:mt-0">
             {data.ai_grade && (
@@ -102,13 +106,6 @@ export function RepoProfile({ data }: { data: RepoAnalysisResponse }) {
               </div>
             )}
             {data.ai_score !== undefined && <ScoreRing value={data.ai_score} label="Score" color="#E8A800" />}
-            <ScoreRing value={pack.algorithmicScore} label="Algorithm" color="#a78bfa" />
-            <div className="flex flex-col items-center gap-1">
-              <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-light)', border: '1px solid var(--border-accent)' }}>
-                <span className="text-lg font-black font-mono" style={{ color: 'var(--text-primary)' }}>{formatDevIq(data.devIq)}</span>
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Repo IQ</span>
-            </div>
           </div>
         </div>
         <div className="mt-5 relative">
@@ -118,13 +115,16 @@ export function RepoProfile({ data }: { data: RepoAnalysisResponse }) {
       </div>
 
       <AIAnalysisPanel
+        kind="repo"
         ai_score={data.ai_score} ai_grade={data.ai_grade}
+        developer_role_title={data.developer_role_title} repo_archetype={data.repo_archetype}
         profile_verdict={data.profile_verdict} code_quality_verdict={data.code_quality_verdict}
         architecture_verdict={data.architecture_verdict} security_verdict={data.security_verdict}
         scalability_verdict={data.scalability_verdict} documentation_verdict={data.documentation_verdict}
         innovation_verdict={data.innovation_verdict} community_verdict={data.community_verdict}
         role_fit_verdict={data.role_fit_verdict} growth_verdict={data.growth_verdict}
         roast={data.roast} top_repos_analysis={data.top_repos_analysis}
+        suggested_projects={data.suggested_projects}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

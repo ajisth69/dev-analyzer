@@ -29,6 +29,8 @@ worker/dist/
 .env.test.local
 .env.production.local
 *.log
+scratch/
+worker/scratch/
 
 # OS Files
 .DS_Store

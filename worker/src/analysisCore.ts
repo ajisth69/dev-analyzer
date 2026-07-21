@@ -30,7 +30,6 @@ export interface AnalysisMetrics {
   Modernity?: number;
   Testing?: number;
   Dependencies?: number;
-  Maintainability?: number;
   Production?: number;
   [key: string]: number | undefined;
 }
@@ -641,15 +640,6 @@ function complexitySignal(languages: ParsedLanguage[]) {
   return clamp(languages.reduce((sum, language) => sum + (COMPLEXITY[language.name] || 58) * (language.pct / 100), 0));
 }
 
-function focusSignal(languages: ParsedLanguage[]) {
-  const dominant = languages[0]?.pct || 0;
-  const majorCount = languages.filter((language) => language.pct >= 8).length;
-  if (dominant >= 82) return clamp(76 + (dominant - 82) * 0.6);
-  if (majorCount >= 3) return 74;
-  if (majorCount === 2) return 68;
-  return 58;
-}
-
 function buildLanguageDistribution(languages: ParsedLanguage[]): LanguageUsage[] {
   const major = languages.filter((language) => language.pct >= 3 || ["TypeScript", "JavaScript", "Python", "Rust", "Go", "C", "C++", "Java", "C#"].includes(language.name));
   const minorTotal = languages
@@ -1192,30 +1182,13 @@ function calculateArchitectureScores(stats: ArchitectureStats, fileSignals: File
     longFiles,
     veryLongFiles,
     allContent,
-    todoCount,
     eslintDisableCount,
-    anyCount,
-    emptyCatchCount,
     hasLayeredDirs,
     hasStrictTs,
     hasErrorHandling,
     hasObservability,
     hasHealthcheck,
   } = stats;
-
-  const maintainability = clamp(
-    68
-    + (hasLayeredDirs ? 8 : 0)
-    + (hasStrictTs ? 6 : 0)
-    + (fileSignals.hasLint ? 8 : 0)
-    + (fileSignals.hasValidation ? 5 : 0)
-    - longFiles.length * 4
-    - veryLongFiles.length * 8
-    - Math.min(anyCount, 30) * 0.7
-    - Math.min(eslintDisableCount, 20) * 1.2
-    - Math.min(emptyCatchCount, 10) * 3
-    - Math.min(todoCount, 40) * 0.25,
-  );
 
   const architecture = clamp(
     52
@@ -1263,7 +1236,7 @@ function calculateArchitectureScores(stats: ArchitectureStats, fileSignals: File
     + dependencyScore * 0.06,
   );
 
-  return { maintainability, architecture, testing, modernity, production };
+  return { architecture, testing, modernity, production };
 }
 
 function buildArchitectureFindings(stats: ArchitectureStats, fileSignals: FileSignals): InsightItem[] {
@@ -1330,7 +1303,6 @@ function buildArchitectureAudit(files: FileSignal[], fileSignals: FileSignals, s
 
   return {
     architecture: scores.architecture,
-    maintainability: scores.maintainability,
     testing: scores.testing,
     modernity: scores.modernity,
     production: scores.production,
@@ -1408,6 +1380,13 @@ export function buildAdvancedAnalysis(params: {
   repoCount: number;
   languages: ParsedLanguage[];
   files: FileSignal[];
+  stars?: number;
+  forks?: number;
+  followers?: number;
+  totalCommits?: number;
+  totalPRs?: number;
+  openIssues?: number;
+  repoSizeKb?: number;
   externalSignals?: ExternalAnalysisSignals;
   deepAnalysis?: {
     summary: string;
@@ -1424,26 +1403,25 @@ export function buildAdvancedAnalysis(params: {
   const externalRepoSignals = params.externalSignals?.repoSignals || [];
   const repoSignalCounts = severityCounts(externalRepoSignals);
   const dependencyAudit = buildDependencyAudit(params.files, fileSignals, externalDependencySignals);
-  const securityScoreWithExternal = clamp(securityAudit.score - repoSignalCounts.critical * 18 - repoSignalCounts.high * 10 - repoSignalCounts.medium * 4 - repoSignalCounts.low);
+  const externalRepoPenalty = Math.min(20, repoSignalCounts.critical * 12 + repoSignalCounts.high * 6 + repoSignalCounts.medium * 3 + repoSignalCounts.low);
+  const securityScoreWithExternal = clamp(securityAudit.score - externalRepoPenalty);
   const dependencyScoreWithExternal = dependencyAudit.score;
   const architectureAudit = buildArchitectureAudit(params.files, fileSignals, securityScoreWithExternal, dependencyScoreWithExternal);
   const trackSignals = buildTrackSignals(params.languages, fileSignals, params.repoCount, params.devIq);
   const primaryTrack = trackSignals[0] || { name: "General Software", score: 45, evidence: ["Insufficient evidence"] };
   const scale = clamp(devIqSignal(params.devIq) * 0.82 + Math.min(params.repoCount, 35) * (params.kind === "dev" ? 1.25 : 0.25));
   const complexity = complexitySignal(params.languages);
-  const focus = focusSignal(params.languages);
   const breadth = clamp(48 + Math.min(params.languages.filter((language) => language.pct >= 5).length, 6) * 7 + Math.min(params.repoCount, 16) * 0.6);
   const quality = clamp(
-    20
-    + (fileSignals.hasTests ? 10 : 0)
+    15
+    + (fileSignals.hasTests ? 12 : 0)
     + (fileSignals.hasCI ? 10 : 0)
-    + (fileSignals.hasBuild ? 7 : 0)
-    + (fileSignals.hasLint ? 7 : 0)
-    + (fileSignals.hasDocker ? 5 : 0)
-    + (fileSignals.hasSecurity ? 5 : 0)
-    + securityAudit.score * 0.18
-    + dependencyAudit.score * 0.1
-    + architectureAudit.maintainability * 0.1,
+    + (fileSignals.hasBuild ? 6 : 0)
+    + (fileSignals.hasLint ? 6 : 0)
+    + (fileSignals.hasDocker ? 4 : 0)
+    + (fileSignals.hasSecurity ? 4 : 0)
+    + dependencyAudit.score * 0.10
+    + architectureAudit.architecture * 0.15,
   );
   const presentation = clamp(
     30
@@ -1455,17 +1433,23 @@ export function buildAdvancedAnalysis(params: {
     + Math.min(params.repoCount, 18) * 0.75,
   );
 
+  const starScore = Math.min(100, Math.round(Math.log10(Math.max((params.stars || 0) + 1, 1)) * 25));
+  const forkScore = Math.min(100, Math.round(Math.log10(Math.max((params.forks || 0) + 1, 1)) * 30));
+  const followerScore = Math.min(100, Math.round(Math.log10(Math.max((params.followers || 0) + 1, 1)) * 28));
+  const commitScore = Math.min(100, Math.round(Math.log10(Math.max((params.totalCommits || 0) + 1, 1)) * 24));
+  const prScore = Math.min(100, Math.round(Math.log10(Math.max((params.totalPRs || 0) + 1, 1)) * 28));
+  const activityScore = clamp(commitScore * 0.50 + prScore * 0.50);
+
   const metrics: AnalysisMetrics = {
-    Logic: clamp(primaryTrack.score * 0.25 + scale * 0.16 + complexity * 0.18 + focus * 0.07 + quality * 0.22 + fileSignals.toolingRigor * 0.55),
+    Logic: clamp(primaryTrack.score * 0.20 + scale * 0.10 + complexity * 0.15 + activityScore * 0.25 + quality * 0.15 + fileSignals.toolingRigor * 0.15),
     Documentation: presentation,
     Versatility: clamp(primaryTrack.name === "Full Stack Product" ? breadth + 14 : breadth + Math.min(trackSignals[1]?.score || 0, 60) * 0.12),
-    Popularity: clamp(scale + (params.devIq > 1_000_000 ? 10 : 0) + (fileSignals.hasExamples ? 5 : 0)),
+    Popularity: clamp(starScore * 0.40 + forkScore * 0.35 + followerScore * 0.15 + scale * 0.10),
     Security: securityScoreWithExternal,
     Architecture: architectureAudit.architecture,
     Modernity: architectureAudit.modernity,
     Testing: architectureAudit.testing,
     Dependencies: dependencyAudit.score,
-    Maintainability: architectureAudit.maintainability,
     Production: architectureAudit.production,
   };
 
@@ -1475,20 +1459,82 @@ export function buildAdvancedAnalysis(params: {
     medium: securityAudit.counts.medium + repoSignalCounts.medium,
     low: securityAudit.counts.low + repoSignalCounts.low,
   };
-  const severityPenalty = totalSeverityCounts.critical * 9 + totalSeverityCounts.high * 5 + dependencyAudit.counts.high * 3;
-  const algorithmicScore = clamp(
-    metrics.Logic * 0.15
-    + metrics.Security! * 0.17
-    + metrics.Architecture! * 0.13
-    + metrics.Maintainability! * 0.11
-    + metrics.Testing! * 0.10
-    + metrics.Dependencies! * 0.10
-    + metrics.Production! * 0.10
-    + metrics.Documentation * 0.06
-    + metrics.Popularity * 0.04
-    + metrics.Versatility * 0.04
-    - severityPenalty,
-  );
+
+  let calculatedScore = 50;
+
+  if (params.kind === "dev") {
+    const commitsVal = params.totalCommits || 0;
+    const prsVal = params.totalPRs || 0;
+    const issuesVal = params.openIssues || 0;
+    const reviewsVal = Math.max(0, Math.round(prsVal * 0.15));
+    const starsVal = params.stars || 0;
+    const followersVal = params.followers || 0;
+
+    const commitsCdf = 1 - 2 ** -(commitsVal / 250);
+    const prsCdf = 1 - 2 ** -(prsVal / 100);
+    const issuesCdf = 1 - 2 ** -(issuesVal / 25);
+    const reviewsCdf = 1 - 2 ** -(reviewsVal / 10);
+    
+    const starsRatio = starsVal / 50;
+    const starsCdf = starsRatio / (1 + starsRatio);
+    
+    const followersRatio = followersVal / 10;
+    const followersCdf = followersRatio / (1 + followersRatio);
+
+    const totalWeight = 18; // 4 + 3 + 1 + 1 + 6 + 3
+    const weightedSum = (
+      4 * commitsCdf +
+      3 * prsCdf +
+      1 * issuesCdf +
+      1 * reviewsCdf +
+      6 * starsCdf +
+      3 * followersCdf
+    );
+
+    calculatedScore = clamp(Math.round((weightedSum / totalWeight) * 100));
+  } else {
+    // For repositories, swap followers with forks and adapt medians
+    const commitsVal = params.totalCommits || 0;
+    const prsVal = params.totalPRs || 0;
+    const issuesVal = params.openIssues || 0;
+    const starsVal = params.stars || 0;
+    const forksVal = params.forks || 0;
+
+    const commitsCdf = 1 - 2 ** -(commitsVal / 80);
+    const prsCdf = 1 - 2 ** -(prsVal / 15);
+    const issuesCdf = 1 - 2 ** -(issuesVal / 8);
+    
+    const starsRatio = starsVal / 15;
+    const starsCdf = starsRatio / (1 + starsRatio);
+    
+    const forksRatio = forksVal / 5;
+    const forksCdf = forksRatio / (1 + forksRatio);
+
+    const totalWeight = 18; // 4 (commits) + 3 (prs) + 1 (issues) + 6 (stars) + 4 (forks)
+    const weightedSum = (
+      4 * commitsCdf +
+      3 * prsCdf +
+      1 * issuesCdf +
+      6 * starsCdf +
+      4 * forksCdf
+    );
+
+    const socialScore = clamp(Math.round((weightedSum / totalWeight) * 100));
+
+    // Engineering score: CI/CD (20), tests (8 - low priority), README/docs (30), lockfiles (20), architecture (22)
+    const readmeBonus = Math.min(30, Math.round(fileSignals.readmeLength / 100));
+    const engScore = clamp(
+      (fileSignals.hasTests ? 8 : 0) +
+      (fileSignals.hasCI ? 20 : 0) +
+      (fileSignals.hasLockfile ? 20 : 0) +
+      readmeBonus +
+      architectureAudit.architecture * 0.22
+    );
+
+    calculatedScore = clamp(Math.round(socialScore * 0.75 + engScore * 0.25));
+  }
+
+  const algorithmicScore = calculatedScore;
 
   const roleFits = buildRoleFits(params.languages, metrics, trackSignals);
   const categories: HealthCategory[] = [
@@ -1563,7 +1609,7 @@ export function buildAdvancedAnalysis(params: {
     timeline: [
       { label: "Evidence", detail: `${params.files.length} high-signal files were scanned for config, source, tests, and risk patterns.`, intensity: confidence },
       { label: "Security", detail: `Security score is ${securityScoreWithExternal}/100 from deterministic and API-backed evidence.`, intensity: securityScoreWithExternal },
-      { label: "Quality", detail: `Testing ${architectureAudit.testing}/100 and maintainability ${architectureAudit.maintainability}/100.`, intensity: clamp((architectureAudit.testing + architectureAudit.maintainability) / 2) },
+      { label: "Quality", detail: `Testing ${architectureAudit.testing}/100 and architecture ${architectureAudit.architecture}/100.`, intensity: clamp((architectureAudit.testing + architectureAudit.architecture) / 2) },
       { label: "Reach", detail: `Popularity signal is ${metrics.Popularity}/100.`, intensity: metrics.Popularity },
     ],
     confidence,

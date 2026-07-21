@@ -279,3 +279,32 @@ button,
 .recharts-polar-grid-concentric circle { stroke: var(--border) !important; }
 .recharts-polar-angle-axis text { fill: var(--text-secondary) !important; }
 .recharts-polar-grid line { stroke: var(--border) !important; }
+
+/* ── Print & PDF Export Rules ───────────────────────────────────────── */
+@media print {
+  body {
+    background: #FFFDF7 !important;
+    color: #1A1A1A !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  header, footer, nav, .search-bar-container, button, .no-print, [class*="orb"] {
+    display: none !important;
+  }
+  main {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .glass, .pdf-block, section, article, .card-hover, [class*="rounded-3xl"] {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    box-shadow: none !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    margin-bottom: 1.5rem !important;
+  }
+  .pdf-page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+}

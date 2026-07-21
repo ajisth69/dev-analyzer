@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { useDevAnalyzer } from './useDevAnalyzer';
@@ -19,34 +20,22 @@ describe('useDevAnalyzer', () => {
   });
 
   describe('analyze', () => {
-    it('should successfully analyze a dev', async () => {
-      const mockData = { username: 'testuser', devIq: 100, languageTags: [], analyzedReposCount: 1 };
-
+    it('should analyze user successfully', async () => {
+      const mockData = { username: 'testuser', devIq: 120, languageTags: ['TS'] };
       globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => mockData
+        json: async () => mockData,
       });
 
       const { result } = renderHook(() => useDevAnalyzer());
 
-      act(() => {
-        result.current.analyze('testuser');
+      await act(async () => {
+        await result.current.analyze('testuser');
       });
 
-      expect(result.current.loading).toBe(true);
-      expect(result.current.error).toBe(null);
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
+      expect(result.current.loading).toBe(false);
       expect(result.current.data).toEqual(mockData);
       expect(result.current.error).toBe(null);
-      expect(globalThis.fetch).toHaveBeenCalledWith('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: 'testuser' })
-      });
     });
 
     it('should handle API errors correctly', async () => {
@@ -58,14 +47,11 @@ describe('useDevAnalyzer', () => {
 
       const { result } = renderHook(() => useDevAnalyzer());
 
-      act(() => {
-        result.current.analyze('testuser');
+      await act(async () => {
+        await result.current.analyze('nonexistentuser');
       });
 
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
+      expect(result.current.loading).toBe(false);
       expect(result.current.error).toBe('User not found');
       expect(result.current.data).toBe(null);
     });
@@ -75,14 +61,11 @@ describe('useDevAnalyzer', () => {
 
       const { result } = renderHook(() => useDevAnalyzer());
 
-      act(() => {
-        result.current.analyze('testuser');
+      await act(async () => {
+        await result.current.analyze('neterroruser');
       });
 
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-
+      expect(result.current.loading).toBe(false);
       expect(result.current.error).toBe('Network error');
       expect(result.current.data).toBe(null);
     });

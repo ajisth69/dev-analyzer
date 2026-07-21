@@ -9,7 +9,10 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "types": ["@cloudflare/workers-types"]
+    "baseUrl": ".",
+    "paths": {
+      "@cloudflare/workers-types": ["./node_modules/@cloudflare/workers-types"]
+    }
   },
   "include": ["api/**/*.ts", "worker/src/**/*.ts"]
 }

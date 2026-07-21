@@ -1,10 +1,12 @@
-import { Github, Code2 } from 'lucide-react';
+import { Github, Code2, Key } from 'lucide-react';
+import { getDailyUsage, getCustomGroqKey, DAILY_FREE_LIMIT } from '../hooks/useDevAnalyzer';
 
 type Mode = 'user' | 'singlerepo' | 'repo' | 'devcompare';
 
 interface Props {
   mode: Mode;
   setMode: (m: Mode) => void;
+  onOpenKeyModal?: () => void;
 }
 
 const tabs: { id: Mode; label: string }[] = [
@@ -14,7 +16,10 @@ const tabs: { id: Mode; label: string }[] = [
   { id: 'devcompare', label: '🔥 Devs Battle' },
 ];
 
-export function Header({ mode, setMode }: Props) {
+export function Header({ mode, setMode, onOpenKeyModal }: Props) {
+  const usage = getDailyUsage();
+  const customKey = getCustomGroqKey();
+
   return (
     <header className="sticky top-0 z-50" style={{ background: 'rgba(255, 253, 247, 0.85)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--border)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[70px] flex items-center justify-between gap-4">
@@ -49,17 +54,34 @@ export function Header({ mode, setMode }: Props) {
           ))}
         </nav>
 
-        {/* Credit */}
-        <a
-          href="https://github.com/ajisth69"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hidden md:flex items-center gap-2 shrink-0 transition-colors"
-          style={{ color: 'var(--text-muted)' }}
-        >
-          <Github className="w-4 h-4" />
-          <span className="text-xs font-semibold font-mono">ajisth69</span>
-        </a>
+        {/* Daily Limit / Custom Key Status */}
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            onClick={onOpenKeyModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all"
+            style={{
+              background: customKey ? '#E6F4EA' : usage.count >= DAILY_FREE_LIMIT ? '#FCE8E6' : 'var(--accent-light)',
+              color: customKey ? '#137333' : usage.count >= DAILY_FREE_LIMIT ? '#C5221F' : 'var(--text-secondary)',
+              border: '1px solid var(--border-accent)',
+            }}
+            title={customKey ? 'Custom Groq API Key Active (Unlimited)' : `${usage.count}/${DAILY_FREE_LIMIT} Free Daily Analyses Used`}
+          >
+            <Key className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline font-mono">
+              {customKey ? 'Groq Key Active' : `${usage.count}/${DAILY_FREE_LIMIT} Free Today`}
+            </span>
+          </button>
+
+          <a
+            href="https://github.com/ajisth69"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden lg:flex items-center gap-2 shrink-0 transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            <Github className="w-4 h-4" />
+          </a>
+        </div>
       </div>
     </header>
   );

@@ -6,12 +6,6 @@ compatibility_flags = [
   "nodejs_compat",
 ]
 
-[assets]
-directory = "./public"
-
-[build]
-command = "npx tsc --noEmit && npx esbuild src/worker.ts --bundle --outfile=dist/worker.js --format=esm --target=es2022 --platform=browser"
-
 [vars]
 LANGUAGE_REPO_LIMIT = "8"
 

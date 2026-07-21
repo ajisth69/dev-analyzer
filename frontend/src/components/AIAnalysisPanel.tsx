@@ -1,9 +1,12 @@
-import { Brain, Code2, Flame, Globe, Layout, Lightbulb, MessageSquare, Rocket, Shield, Star, TrendingUp, Users, Zap } from 'lucide-react';
-import { AIRepoAnalysis } from '../hooks/useDevAnalyzer';
+import { Brain, Code2, Flame, Globe, Layout, Lightbulb, MessageSquare, Rocket, Shield, Star, TrendingUp, Users, Zap, Layers, Sparkles } from 'lucide-react';
+import { AIRepoAnalysis, SuggestedProject } from '../hooks/useDevAnalyzer';
 
 interface AIAnalysisPanelProps {
+  kind?: 'dev' | 'repo';
   ai_score?: number;
   ai_grade?: string;
+  developer_role_title?: string;
+  repo_archetype?: string;
   profile_verdict?: string;
   code_quality_verdict?: string;
   architecture_verdict?: string;
@@ -16,6 +19,7 @@ interface AIAnalysisPanelProps {
   growth_verdict?: string;
   roast?: string;
   top_repos_analysis?: AIRepoAnalysis[];
+  suggested_projects?: SuggestedProject[];
 }
 
 function GradeBadge({ grade }: { grade: string }) {
@@ -41,10 +45,13 @@ function VerdictCard({ icon, label, text, accent }: { icon: React.ReactNode; lab
 }
 
 export function AIAnalysisPanel(props: AIAnalysisPanelProps) {
-  const { ai_score, ai_grade, profile_verdict, code_quality_verdict, architecture_verdict, security_verdict, scalability_verdict, documentation_verdict, innovation_verdict, community_verdict, role_fit_verdict, growth_verdict, roast, top_repos_analysis } = props;
+  const { kind, ai_score, ai_grade, developer_role_title, repo_archetype, profile_verdict, code_quality_verdict, architecture_verdict, security_verdict, scalability_verdict, documentation_verdict, innovation_verdict, community_verdict, role_fit_verdict, growth_verdict, roast, top_repos_analysis, suggested_projects } = props;
 
-  const hasAI = ai_score !== undefined || ai_grade || profile_verdict || code_quality_verdict || architecture_verdict || security_verdict || roast || (top_repos_analysis && top_repos_analysis.length > 0);
+  const hasAI = ai_score !== undefined || ai_grade || developer_role_title || repo_archetype || profile_verdict || code_quality_verdict || architecture_verdict || security_verdict || roast || (top_repos_analysis && top_repos_analysis.length > 0) || (suggested_projects && suggested_projects.length > 0);
   if (!hasAI) return null;
+
+  const showDevRole = kind === 'dev' ? Boolean(developer_role_title) : !kind ? Boolean(developer_role_title && !repo_archetype) : false;
+  const showRepoArchetype = kind === 'repo' ? Boolean(repo_archetype) : !kind ? Boolean(repo_archetype) : false;
 
   const verdicts = [
     { text: profile_verdict, icon: <MessageSquare className="w-4 h-4" />, label: 'Overall Verdict', accent: '#38bdf8' },
@@ -67,7 +74,19 @@ export function AIAnalysisPanel(props: AIAnalysisPanelProps) {
           <Brain className="w-5 h-5" />
         </div>
         <div>
-          <h3 className="text-lg font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>Intelligence Report</h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-lg font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>Intelligence Report</h3>
+            {showDevRole && (
+              <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                👑 {developer_role_title}
+              </span>
+            )}
+            {showRepoArchetype && (
+              <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                💎 {repo_archetype}
+              </span>
+            )}
+          </div>
           <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Deterministic Analysis Engine</p>
         </div>
         <div className="ml-auto flex items-center gap-4">
@@ -92,6 +111,42 @@ export function AIAnalysisPanel(props: AIAnalysisPanelProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {verdicts.map((v, i) => <VerdictCard key={i} icon={v.icon} label={v.label} text={v.text!} accent={v.accent} />)}
       </div>
+
+      {/* 🚀 Tailored Project Recommendations */}
+      {suggested_projects && suggested_projects.length > 0 && (
+        <div className="mt-8 pt-6 border-t border-slate-800/60 space-y-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <p className="text-xs font-black uppercase tracking-[0.15em]" style={{ color: 'var(--text-primary)' }}>
+              Tailored Projects to Build Next
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {suggested_projects.map((proj, idx) => {
+              const badgeBg = proj.difficulty === 'Expert' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' : proj.difficulty === 'Advanced' ? 'bg-purple-500/10 text-purple-600 border-purple-500/30' : 'bg-amber-500/10 text-amber-600 border-amber-500/30';
+              return (
+                <div key={idx} className="overflow-hidden rounded-2xl border p-5 space-y-3 transition-all hover:border-amber-500/40" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${badgeBg}`}>
+                        {proj.difficulty}
+                      </span>
+                    </div>
+                    <h4 className="font-extrabold text-sm leading-snug" style={{ color: 'var(--text-primary)' }}>{proj.title}</h4>
+                  </div>
+                  <p className="text-xs leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>{proj.reason}</p>
+                  {proj.impact && (
+                    <div className="pt-2 border-t flex items-center gap-1.5 text-[11px] font-semibold" style={{ borderColor: 'var(--border)', color: 'var(--accent)' }}>
+                      <Layers className="w-3.5 h-3.5 shrink-0" />
+                      <span>{proj.impact}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Per-Repo */}
       {top_repos_analysis && top_repos_analysis.length > 0 && (

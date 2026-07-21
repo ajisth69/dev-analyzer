@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Search, Command, X, Camera } from 'lucide-react';
-import { useDevAnalyzer } from './hooks/useDevAnalyzer';
+import { AlertTriangle, Search, Command, X, FileText, Printer } from 'lucide-react';
+import { useDevAnalyzer, getDailyUsage, getCustomGroqKey, DAILY_FREE_LIMIT } from './hooks/useDevAnalyzer';
 import { Header } from './components/Header';
 import { SearchBar } from './components/SearchBar';
 import { UserProfile, RepoProfile } from './components/ProfileViews';
 import { DevBattle, RepoBattle } from './components/BattleViews';
+import { LimitModal } from './components/LimitModal';
+import { ReportPdfTemplate } from './components/ReportPdfTemplate';
 import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 type Mode = 'user' | 'singlerepo' | 'repo' | 'devcompare';
 
@@ -60,48 +63,142 @@ export default function App() {
   const [repo2Input, setRepo2Input] = useState('');
   const [dev1Input, setDev1Input] = useState('');
   const [dev2Input, setDev2Input] = useState('');
-
-  const { analyze, analyzeRepo, compareRepos, compareDevs, loading, error, data, repoData, compareData, compareDevsData } = useDevAnalyzer();
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
+
   const resultRef = useRef<HTMLDivElement>(null);
+  const pdfTemplateRef = useRef<HTMLDivElement>(null);
+
+  const {
+    loading,
+    error,
+    data,
+    repoData,
+    compareData,
+    compareDevsData,
+    analyze,
+    analyzeRepo,
+    compareRepos,
+    compareDevs,
+  } = useDevAnalyzer();
+
+  const [pendingAction, setPendingAction] = useState<((key: string) => void) | null>(null);
+
+  const checkLimitAndExecute = (action: (customKey?: string) => void) => {
+    const usage = getDailyUsage();
+    const customKey = getCustomGroqKey();
+    if (usage.count >= DAILY_FREE_LIMIT && !customKey) {
+      setPendingAction(() => (k: string) => action(k));
+      setLimitModalOpen(true);
+      return;
+    }
+    action(customKey);
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const urlMode = params.get('mode') as Mode;
-    if (urlMode) setMode(urlMode);
-    if (urlMode === 'user' && params.get('user')) { setUsernameInput(params.get('user')!); analyze(params.get('user')!); }
-    else if (urlMode === 'singlerepo' && params.get('repo')) { setSingleRepoInput(params.get('repo')!); analyzeRepo(params.get('repo')!); }
-    else if (urlMode === 'repo' && params.get('r1') && params.get('r2')) { setRepo1Input(params.get('r1')!); setRepo2Input(params.get('r2')!); compareRepos(params.get('r1')!, params.get('r2')!); }
-    else if (urlMode === 'devcompare' && params.get('d1') && params.get('d2')) { setDev1Input(params.get('d1')!); setDev2Input(params.get('d2')!); compareDevs(params.get('d1')!, params.get('d2')!); }
+    const m = params.get('mode') as Mode;
+    const u = params.get('u');
+    const r = params.get('r');
+    const r1 = params.get('r1');
+    const r2 = params.get('r2');
+    const d1 = params.get('d1');
+    const d2 = params.get('d2');
 
-    const handleKeyDown = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setCmdOpen(o => !o); } };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    if (m) setMode(m);
+
+    if (m === 'user' && u) {
+      setUsernameInput(u);
+      checkLimitAndExecute((key) => analyze(u, key));
+    } else if (m === 'singlerepo' && r) {
+      setSingleRepoInput(r);
+      checkLimitAndExecute((key) => analyzeRepo(r, key));
+    } else if (m === 'repo' && r1 && r2) {
+      setRepo1Input(r1);
+      setRepo2Input(r2);
+      checkLimitAndExecute((key) => compareRepos(r1, r2, key));
+    } else if (m === 'devcompare' && d1 && d2) {
+      setDev1Input(d1);
+      setDev2Input(d2);
+      checkLimitAndExecute((key) => compareDevs(d1, d2, key));
+    }
   }, []);
 
-  const updateUrl = (newMode: Mode, params: Record<string, string>) => {
+  const updateUrl = (newMode: Mode, paramsObj: Record<string, string>) => {
     const url = new URL(window.location.href);
-    url.search = new URLSearchParams({ mode: newMode, ...params }).toString();
-    window.history.pushState({}, '', url);
+    url.searchParams.set('mode', newMode);
+    Object.entries(paramsObj).forEach(([k, v]) => url.searchParams.set(k, v));
+    window.history.pushState({}, '', url.toString());
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === 'user' && usernameInput.trim()) { analyze(usernameInput.trim()); updateUrl('user', { user: usernameInput.trim() }); }
-    else if (mode === 'singlerepo' && singleRepoInput.trim()) { analyzeRepo(singleRepoInput.trim()); updateUrl('singlerepo', { repo: singleRepoInput.trim() }); }
-    else if (mode === 'repo' && repo1Input.trim() && repo2Input.trim()) { compareRepos(repo1Input.trim(), repo2Input.trim()); updateUrl('repo', { r1: repo1Input.trim(), r2: repo2Input.trim() }); }
-    else if (mode === 'devcompare' && dev1Input.trim() && dev2Input.trim()) { compareDevs(dev1Input.trim(), dev2Input.trim()); updateUrl('devcompare', { d1: dev1Input.trim(), d2: dev2Input.trim() }); }
+    if (mode === 'user' && usernameInput.trim()) {
+      checkLimitAndExecute((key) => {
+        analyze(usernameInput.trim(), key);
+        updateUrl('user', { u: usernameInput.trim() });
+      });
+    } else if (mode === 'singlerepo' && singleRepoInput.trim()) {
+      checkLimitAndExecute((key) => {
+        analyzeRepo(singleRepoInput.trim(), key);
+        updateUrl('singlerepo', { r: singleRepoInput.trim() });
+      });
+    } else if (mode === 'repo' && repo1Input.trim() && repo2Input.trim()) {
+      checkLimitAndExecute((key) => {
+        compareRepos(repo1Input.trim(), repo2Input.trim(), key);
+        updateUrl('repo', { r1: repo1Input.trim(), r2: repo2Input.trim() });
+      });
+    } else if (mode === 'devcompare' && dev1Input.trim() && dev2Input.trim()) {
+      checkLimitAndExecute((key) => {
+        compareDevs(dev1Input.trim(), dev2Input.trim(), key);
+        updateUrl('devcompare', { d1: dev1Input.trim(), d2: dev2Input.trim() });
+      });
+    }
   };
 
-  const handleExport = async () => {
-    if (!resultRef.current) return;
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const handleExportPdf = async () => {
+    if (!pdfTemplateRef.current || isExportingPdf) return;
+    setIsExportingPdf(true);
     try {
-      const canvas = await html2canvas(resultRef.current, { backgroundColor: '#FFFDF7', scale: 2 });
-      const link = document.createElement('a');
-      link.download = 'dev-analyzer-report.png';
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    } catch (err) { console.error('Export failed:', err); }
+      const root = pdfTemplateRef.current;
+      const pageElements = Array.from(root.querySelectorAll('.pdf-page')) as HTMLElement[];
+      if (pageElements.length === 0) {
+        setIsExportingPdf(false);
+        return;
+      }
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      for (let i = 0; i < pageElements.length; i++) {
+        const pageEl = pageElements[i];
+        const canvas = await html2canvas(pageEl, {
+          backgroundColor: '#ffffff',
+          scale: 2.5,
+          useCORS: true,
+          logging: false,
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      }
+
+      const reportTitle = data?.username || repoData?.repoName || (compareDevsData ? `${compareDevsData.dev1.username}-vs-${compareDevsData.dev2.username}` : 'dev-analyzer');
+      pdf.save(`${reportTitle}-executive-report.pdf`);
+    } catch (err) {
+      console.error('Executive PDF Export failed:', err);
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   return (
@@ -113,7 +210,7 @@ export default function App() {
         <div className="orb w-[400px] h-[400px] bottom-0 left-1/3" style={{ background: 'rgba(255, 200, 50, 0.04)', animationDelay: '6s' }} />
       </div>
 
-      <Header mode={mode} setMode={setMode} />
+      <Header mode={mode} setMode={setMode} onOpenKeyModal={() => setLimitModalOpen(true)} />
 
       <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-20">
         <SearchBar
@@ -141,9 +238,23 @@ export default function App() {
         {!loading && (
           <div className="mt-16 relative">
             {(data || repoData || compareDevsData || compareData) && (
-              <div className="absolute -top-12 right-0 z-50">
-                <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all" style={{ background: 'var(--accent-light)', color: '#8B6914', border: '1px solid var(--border-accent)' }}>
-                  <Camera className="w-4 h-4" /> Export Report
+              <div className="absolute -top-12 right-0 z-50 flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-bold transition-all shadow-sm border border-slate-300 hover:bg-slate-100"
+                  style={{ background: 'var(--bg-card)', color: 'var(--text-secondary)' }}
+                  title="Print or Save Crisp Vector PDF via Browser"
+                >
+                  <Printer className="w-3.5 h-3.5" /> Print Vector PDF
+                </button>
+                <button
+                  onClick={handleExportPdf}
+                  disabled={isExportingPdf}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-md hover:scale-105 active:scale-95 disabled:opacity-50"
+                  style={{ background: 'var(--accent)', color: '#FFFFFF' }}
+                >
+                  <FileText className="w-4 h-4" />
+                  {isExportingPdf ? 'Exporting PDF...' : 'Download Multi-Page PDF'}
                 </button>
               </div>
             )}
@@ -200,6 +311,34 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {limitModalOpen && (
+        <LimitModal
+          onClose={() => {
+            setLimitModalOpen(false);
+            setPendingAction(null);
+          }}
+          onSuccess={(savedKey) => {
+            setLimitModalOpen(false);
+            if (pendingAction) {
+              pendingAction(savedKey);
+              setPendingAction(null);
+            }
+          }}
+        />
+      )}
+
+      {/* Hidden Offscreen Container for Executive 4-Page PDF Template Generation */}
+      <div style={{ position: 'fixed', left: '-9999px', top: '-9999px', pointerEvents: 'none', zIndex: -100 }}>
+        <ReportPdfTemplate
+          ref={pdfTemplateRef}
+          mode={mode}
+          data={data}
+          repoData={repoData}
+          compareDevsData={compareDevsData}
+          compareData={compareData}
+        />
+      </div>
     </div>
   );
 }
