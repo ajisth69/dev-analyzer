@@ -985,7 +985,7 @@ Declared Winner: ${winner}`;
 }
 
 export default {
-  async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env, _ctx?: any): Promise<Response> {
     const origin = request.url ? new URL(request.url).origin : null;
 
     if (request.method === "OPTIONS") {
