@@ -9,7 +9,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "types": []
+    "types": ["node"]
   },
   "include": ["api/**/*.ts"]
 }
