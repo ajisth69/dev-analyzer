@@ -119,7 +119,7 @@ const ANALYZE_REPO_URL = '/api/analyze-repo';
 const COMPARE_URL = '/api/compare-repos';
 const COMPARE_DEVS_URL = '/api/compare-devs';
 
-export const DAILY_FREE_LIMIT = 3;
+export const DAILY_FREE_LIMIT = 10;
 
 export function getDailyUsage(): { count: number; date: string } {
   const today = new Date().toISOString().split('T')[0];
