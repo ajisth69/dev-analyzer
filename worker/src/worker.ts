@@ -816,7 +816,6 @@ async function callLLM(
 
   for (const model of models) {
     try {
-      console.log(`[LLM ROUTER] Trying ${model} via https://api.groq.com/openai/v1/chat/completions`);
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${cleanKey}`,
@@ -842,7 +841,6 @@ async function callLLM(
         const data = await resp.json() as any;
         const content = data.choices?.[0]?.message?.content ?? "";
         if (content.trim()) {
-          console.log(`[LLM SUCCESS] Model ${model} succeeded!`);
           return content;
         }
       } else {
