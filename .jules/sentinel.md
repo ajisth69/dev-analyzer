@@ -1,8 +1,5 @@
-## 2024-05-18 - Prevent Error Detail Leakage
-**Vulnerability:** The global Cloudflare Worker try/catch block returned raw `error.message` strings directly to the client in a 500 status response (`{ error: error.message }`).
-**Learning:** Returning unhandled runtime exceptions directly to the frontend can inadvertently expose sensitive configuration data, like missing environment variables (e.g., `GITHUB_PAT environment variable is not set`), API key details, or internal application state, giving attackers reconnaissance data.
-**Prevention:** Catch all unhandled exceptions globally, log them securely on the server (`console.error`), and return a sanitized, generic error message (e.g., `"An internal server error occurred"`) to the client.
-## 2026-05-19 - Strict CORS Implementation
-**Vulnerability:** Overly Permissive CORS Policy
-**Learning:** Blindly echoing back the requested origin or allowing '*' exposes the application to cross-origin attacks
-**Prevention:** Implement strict origin validation against a whitelist of allowed domains or environmental configurations, explicitly setting Access-Control-Allow-Origin only when matched
+## 2024-05-18 - Restrict Localhost CORS Policy
+
+**Vulnerability:** The CORS policy in `worker/src/worker.ts` explicitly allowed any port on localhost using a regex (`/^https?:\/\/localhost(:\d+)?$/`), which is overly permissive. Additionally, it checked the request URL's origin instead of the `Origin` header.
+**Learning:** Overly permissive wildcard-like regexes for CORS can lead to unauthorized cross-origin access. Furthermore, CORS evaluation must be performed against the `Origin` header sent by the client, not the requested URL's origin.
+**Prevention:** Explicitly specify the exact ports required for development (e.g., `localhost:3000`). Always extract the origin from the `Origin` header for CORS validation (`request.headers.get("Origin")`).

@@ -42,4 +42,52 @@ describe('Worker End-to-End API Integration', () => {
     const text = await res.text();
     expect(text).toContain('DevAnalyzer');
   });
+
+  describe('CORS policy', () => {
+    it('allows localhost:3000', async () => {
+      const req = new Request('http://localhost/api/badge.svg', {
+        method: 'OPTIONS',
+        headers: {
+          'Origin': 'http://localhost:3000'
+        }
+      });
+      const res = await worker.fetch(req, mockEnv as any, {} as any);
+      expect(res.headers.get('Access-Control-Allow-Origin')).toBe('http://localhost:3000');
+    });
+
+    it('rejects arbitrary localhost ports', async () => {
+      const req = new Request('http://localhost/api/badge.svg', {
+        method: 'OPTIONS',
+        headers: {
+          'Origin': 'http://localhost:8080'
+        }
+      });
+      const res = await worker.fetch(req, mockEnv as any, {} as any);
+      expect(res.headers.get('Access-Control-Allow-Origin')).toBeNull();
+    });
+
+    it('allows explicitly listed ALLOWED_ORIGINS', async () => {
+      const req = new Request('http://localhost/api/badge.svg', {
+        method: 'OPTIONS',
+        headers: {
+          'Origin': 'https://example.com'
+        }
+      });
+      const envWithAllowedOrigin = { ...mockEnv, ALLOWED_ORIGINS: 'https://example.com, https://test.com' };
+      const res = await worker.fetch(req, envWithAllowedOrigin as any, {} as any);
+      expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://example.com');
+    });
+
+    it('rejects unlisted domains', async () => {
+      const req = new Request('http://localhost/api/badge.svg', {
+        method: 'OPTIONS',
+        headers: {
+          'Origin': 'https://malicious.com'
+        }
+      });
+      const envWithAllowedOrigin = { ...mockEnv, ALLOWED_ORIGINS: 'https://example.com' };
+      const res = await worker.fetch(req, envWithAllowedOrigin as any, {} as any);
+      expect(res.headers.get('Access-Control-Allow-Origin')).toBeNull();
+    });
+  });
 });
