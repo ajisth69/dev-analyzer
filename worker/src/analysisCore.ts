@@ -465,8 +465,13 @@ export function selectEvidencePaths(treeItems: TreeItem[], battleMode = false) {
     .sort((a, b) => b.score - a.score || a.path.length - b.path.length);
 
   const selected: string[] = [];
+  const seenPaths = new Set<string>();
   const pushUnique = (path: string) => {
-    if (!selected.some((existing) => existing.toLowerCase() === path.toLowerCase())) selected.push(path);
+    const lower = path.toLowerCase();
+    if (!seenPaths.has(lower)) {
+      seenPaths.add(lower);
+      selected.push(path);
+    }
   };
 
   for (const target of fallback) {
