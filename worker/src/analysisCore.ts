@@ -794,11 +794,12 @@ function buildSecurityAudit(files: FileSignal[]) {
     maxMatches = 4,
   ) => {
     let matches = 0;
+    const globalRegex = new RegExp(regex.source, regex.flags.includes("g") ? regex.flags : `${regex.flags}g`);
     for (const file of files) {
       if (matches >= maxMatches) break;
       const content = file.content;
       let match: RegExpExecArray | null;
-      const globalRegex = new RegExp(regex.source, regex.flags.includes("g") ? regex.flags : `${regex.flags}g`);
+      globalRegex.lastIndex = 0;
       while ((match = globalRegex.exec(content)) && matches < maxMatches) {
         addFinding({
           ruleId,

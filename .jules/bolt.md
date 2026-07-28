@@ -1,7 +1,5 @@
-## 2024-11-20 - Sequential API Calls
-**Learning:** External API fetches and internal recursive loop fetches (like getting evidence for multiple repos) were using `await` inside sequential loops. This increased latency as the worker waited for each request before firing the next.
-**Action:** Always replace independent sequential asynchronous operations with `Promise.all` inside Cloudflare Workers or serverless functions to dramatically lower TTFB and improve throughput.
-## 2026-05-19 - Using Promise.all for Parallel Fetching
+## 2024-05-15 - Regex Compilation Optimization
 
-**Learning:** When executing multiple independent asynchronous network requests inside a loop (like `fetchRepoEvidence` for multiple repositories), fetching sequentially (N+1 fetches) blocks subsequent iterations and drastically increases total execution time. The sequential execution takes roughly the sum of all individual request times.
-**Action:** Always identify opportunities to map arrays to promises and use `Promise.all` to execute the requests concurrently, significantly reducing the total execution time to roughly the duration of the longest single request. Also, always add comments detailing performance optimizations when modifying code.
+**Learning:** Recompiling the same Regular Expression object (using `new RegExp()`) inside a tight loop causes significant performance overhead in JavaScript.
+
+**Action:** When a regular expression pattern and its flags are constant, hoist its compilation outside of loops. If the regex uses the global (`g`) flag, remember to reset its state by adding `regex.lastIndex = 0` inside the loop before it is evaluated against a new string, ensuring matches start from the beginning.
