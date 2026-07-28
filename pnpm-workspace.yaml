@@ -1,4 +1,12 @@
 allowBuilds:
-  esbuild: set this to true or false
+  esbuild: true
 minimumReleaseAgeExclude:
   - '@cloudflare/workers-types@5.20260728.1'
+
+overrides:
+  sharp: ">=0.33.5"
+  undici: ">=6.21.1"
+  ws: ">=8.17.1"
+  esbuild: ">=0.25.0"
+  postcss: ">=8.4.31"
+  vite: ">=6.3.6"

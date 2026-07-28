@@ -1,5 +1,7 @@
-allowBuilds:
-  core-js: set this to true or false
-  esbuild: set this to true or false
-minimumReleaseAgeExclude:
-  - postcss@8.5.24
+overrides:
+  sharp: ">=0.33.5"
+  undici: ">=6.21.1"
+  ws: ">=8.17.1"
+  esbuild: ">=0.25.0"
+  postcss: ">=8.4.31"
+  vite: ">=6.3.6"
