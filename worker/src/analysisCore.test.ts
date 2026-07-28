@@ -1,5 +1,19 @@
 import { describe, it, expect } from 'vitest';
-import { calculateDevIQ, parsePackageJson, buildLanguageProfile, RepoLanguageStats } from './analysisCore';
+import { calculateDevIQ, parsePackageJson, buildLanguageProfile, RepoLanguageStats, targetFilesForMode, BASE_TARGET_FILES, BATTLE_TARGET_FILES } from './analysisCore';
+
+describe('targetFilesForMode', () => {
+  it('should return BASE_TARGET_FILES when battleMode is false', () => {
+    expect(targetFilesForMode(false)).toBe(BASE_TARGET_FILES);
+  });
+
+  it('should return BASE_TARGET_FILES when battleMode is not provided (default)', () => {
+    expect(targetFilesForMode()).toBe(BASE_TARGET_FILES);
+  });
+
+  it('should return BATTLE_TARGET_FILES when battleMode is true', () => {
+    expect(targetFilesForMode(true)).toBe(BATTLE_TARGET_FILES);
+  });
+});
 
 describe('buildLanguageProfile', () => {
   it('should handle an empty array of language stats', () => {

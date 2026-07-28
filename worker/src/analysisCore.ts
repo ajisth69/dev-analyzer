@@ -280,7 +280,7 @@ export const BASE_TARGET_FILES = [
   "build.gradle",
 ];
 
-const BATTLE_TARGET_FILES = [
+export const BATTLE_TARGET_FILES = [
   "README.md",
   "SECURITY.md",
   "package.json",
