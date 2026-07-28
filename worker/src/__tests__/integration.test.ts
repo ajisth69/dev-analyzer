@@ -29,7 +29,7 @@ describe('Worker End-to-End API Integration', () => {
     const res = await worker.fetch(req, mockEnv as any, {} as any);
     expect(res.status).toBe(400);
     const body = await res.json() as any;
-    expect(body.error).toBe('Invalid repo format. Use owner/repo');
+    expect(body.error).toBe('Invalid repo format. Use valid owner/repo');
   });
 
   it('handles badge.svg requests with proper SVG headers', async () => {
