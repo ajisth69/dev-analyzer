@@ -257,6 +257,76 @@ describe('calculateDevIQ', () => {
     expect(devIq).toBe(625);
   });
 
+
+  it('should not add longevity bonus if repository is less than 6 months old', () => {
+    const repos = [
+      {
+        name: 'test-repo',
+        created_at: new Date(Date.now() - 3 * 30 * 24 * 60 * 60 * 1000).toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ];
+    const devIq = calculateDevIQ(repos, [], 0);
+    expect(devIq).toBe(0);
+  });
+
+  it('should add small longevity bonus if repository is between 6 and 24 months old', () => {
+    const repos = [
+      {
+        name: 'test-repo',
+        created_at: new Date(Date.now() - 10 * 30 * 24 * 60 * 60 * 1000).toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ];
+    const devIq = calculateDevIQ(repos, [], 0);
+    // 10 months -> longevityMonths * 100 = 1000
+    // Math.round at the end. Since Date.now() differs slightly from calculation, it should be > 900 and < 1100
+    expect(devIq).toBeGreaterThan(900);
+    expect(devIq).toBeLessThan(1100);
+  });
+
+  it('should not add issue ratio bonus if ratio is >= 0.1', () => {
+    const repos = [
+      {
+        name: 'test-repo',
+        stargazers_count: 20, // 20 * 50 = 1000
+        open_issues_count: 5  // ratio = 5/20 = 0.25 >= 0.1, no bonus
+      }
+    ];
+    const devIq = calculateDevIQ(repos, [], 0);
+    expect(devIq).toBe(1000);
+  });
+
+  it('should not add issue ratio bonus if stargazers count is <= 10', () => {
+    const repos = [
+      {
+        name: 'test-repo',
+        stargazers_count: 10, // 10 * 50 = 500
+        open_issues_count: 0  // ratio = 0 < 0.1, but stargazers <= 10, no bonus
+      }
+    ];
+    const devIq = calculateDevIQ(repos, [], 0);
+    expect(devIq).toBe(500);
+  });
+
+  it('should handle repos with no stargazers, forks, or license', () => {
+    const repos = [
+      {
+        name: 'test-repo'
+      }
+    ];
+    const devIq = calculateDevIQ(repos, [], 0);
+    expect(devIq).toBe(0);
+  });
+
+  it('should handle repo bytes exactly 50_000 (no bonus)', () => {
+    // 50,000 bytes JS
+    // 50000 / 35 = 1428.57 lines
+    // 1428.57 * 2.5 = 3571.42
+    const devIq = calculateDevIQ([], [{ JavaScript: 50000 }], 0);
+    expect(devIq).toBe(3571);
+  });
+
   it('should return 0 if finalIq is NaN', () => {
     // Pass something that causes NaN in the calculations
     // For instance, followers as a non-number that coerces badly, though typescript prevents it.
