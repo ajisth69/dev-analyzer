@@ -822,8 +822,9 @@ function buildSecurityAudit(files: FileSignal[]) {
   addRegexFinding("secret.google-api-key", "high", "Google API key committed", /AIza[0-9A-Za-z\-_]{35}/, "A Google API key pattern appears in scanned files.", "Restrict, rotate, and move API keys out of source control.", 88, 4);
   addRegexFinding("secret.slack-token", "critical", "Slack token committed", /xox[baprs]-[A-Za-z0-9-]{20,}/, "A Slack token pattern appears in scanned files.", "Revoke the token and load it from a secret manager.", 94, 4);
 
+  const genericSecret = /\b(api[_-]?key|secret|token|password|passwd|pwd|client_secret|private_key)\b\s*[:=]\s*["'`]([^"'`\n]{12,})["'`]/gi;
   for (const file of files) {
-    const genericSecret = /\b(api[_-]?key|secret|token|password|passwd|pwd|client_secret|private_key)\b\s*[:=]\s*["'`]([^"'`\n]{12,})["'`]/gi;
+    genericSecret.lastIndex = 0;
     let match: RegExpExecArray | null;
     while ((match = genericSecret.exec(file.content))) {
       const value = match[2] || "";
