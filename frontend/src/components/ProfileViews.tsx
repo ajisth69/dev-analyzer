@@ -1,4 +1,4 @@
-import { Github } from 'lucide-react';
+import { Github } from './GithubIcon';
 import { AnalyzerResponse, RepoAnalysisResponse } from '../hooks/useDevAnalyzer';
 import { DevRadarChart } from './RadarChart';
 import { FeatureSuite } from './FeatureSuite';

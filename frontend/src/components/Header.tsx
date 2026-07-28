@@ -1,4 +1,5 @@
-import { Github, Code2, Key, Zap, FolderGit2, Swords, Flame, LucideIcon } from 'lucide-react';
+import { Code2, Key, Zap, FolderGit2, Swords, Flame, LucideIcon } from 'lucide-react';
+import { Github } from './GithubIcon';
 import { getDailyUsage, getCustomGroqKey, DAILY_FREE_LIMIT } from '../hooks/useDevAnalyzer';
 
 type Mode = 'user' | 'singlerepo' | 'repo' | 'devcompare';

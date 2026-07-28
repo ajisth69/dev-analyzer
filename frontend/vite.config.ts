@@ -7,9 +7,15 @@ export default defineConfig({
     chunkSizeWarningLimit: 1600,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'lucide-react'],
-          pdf: ['html2canvas', 'jspdf']
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('html2canvas') || id.includes('jspdf')) {
+              return 'pdf';
+            }
+            if (id.includes('react') || id.includes('lucide-react')) {
+              return 'vendor';
+            }
+          }
         }
       }
     }
