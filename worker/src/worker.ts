@@ -1025,8 +1025,8 @@ export default {
       if (url.pathname === "/api/compare-devs" && request.method === "POST") {
         const body = (await request.json().catch(() => ({}))) as { dev1?: string; dev2?: string; groqApiKey?: string };
         const customGroqKey = body.groqApiKey || request.headers.get("x-groq-api-key") || undefined;
-        if (!body.dev1 || !body.dev2) {
-          return new Response(JSON.stringify({ error: "dev1 and dev2 required" }), { status: 400, headers: responseHeaders(origin, env) });
+        if (!body.dev1 || !body.dev2 || !/^[a-zA-Z0-9_-]+$/.test(body.dev1.trim()) || !/^[a-zA-Z0-9_-]+$/.test(body.dev2.trim())) {
+          return new Response(JSON.stringify({ error: "Invalid GitHub username format for dev1 or dev2" }), { status: 400, headers: responseHeaders(origin, env) });
         }
 
         const dev1Data = await processUser(body.dev1.trim().toLowerCase(), env, createFetchBudget(), true, customGroqKey);
@@ -1045,8 +1045,8 @@ export default {
         }
 
         const [owner, name] = body.repo.trim().split("/");
-        if (!owner || !name) {
-          return new Response(JSON.stringify({ error: "Invalid repo format. Use owner/repo" }), { status: 400, headers: responseHeaders(origin, env) });
+        if (!owner || !name || !/^[a-zA-Z0-9_-]+$/.test(owner) || !/^[a-zA-Z0-9_.-]+$/.test(name)) {
+          return new Response(JSON.stringify({ error: "Invalid repo format. Use valid owner/repo" }), { status: 400, headers: responseHeaders(origin, env) });
         }
 
         const data = await processRepo(owner.toLowerCase(), name.toLowerCase(), env, budget, false, customGroqKey);
@@ -1062,8 +1062,11 @@ export default {
 
         const [owner1, name1] = body.repo1.trim().split("/");
         const [owner2, name2] = body.repo2.trim().split("/");
-        if (!owner1 || !name1 || !owner2 || !name2) {
-          return new Response(JSON.stringify({ error: "Invalid repo format. Use owner/repo" }), { status: 400, headers: responseHeaders(origin, env) });
+
+        const isValidRepo = (o: string, n: string) => o && n && /^[a-zA-Z0-9_-]+$/.test(o) && /^[a-zA-Z0-9_.-]+$/.test(n);
+
+        if (!isValidRepo(owner1, name1) || !isValidRepo(owner2, name2)) {
+          return new Response(JSON.stringify({ error: "Invalid repo format. Use valid owner/repo" }), { status: 400, headers: responseHeaders(origin, env) });
         }
 
         const repo1Data = await processRepo(owner1.toLowerCase(), name1.toLowerCase(), env, budget, true, customGroqKey);
