@@ -362,4 +362,39 @@ describe('parsePackageJson', () => {
     const result = parsePackageJson(file);
     expect(result).toBeNull();
   });
+
+  it('should return null for empty string content', () => {
+    const file = {
+      name: 'package.json',
+      content: ''
+    };
+    const result = parsePackageJson(file);
+    expect(result).toBeNull();
+  });
+
+  it('should parse comprehensive package.json', () => {
+    const pkg = {
+      dependencies: { react: '^18.0.0' },
+      devDependencies: { vitest: '^1.0.0' },
+      optionalDependencies: { fsevents: '^2.3.2' },
+      peerDependencies: { 'react-dom': '^18.0.0' },
+      scripts: { test: 'vitest' },
+      packageManager: 'pnpm@8.15.4'
+    };
+    const file = {
+      name: 'package.json',
+      content: JSON.stringify(pkg)
+    };
+    const result = parsePackageJson(file);
+    expect(result).toEqual(pkg);
+  });
+
+  it('should parse empty JSON object', () => {
+    const file = {
+      name: 'package.json',
+      content: '{}'
+    };
+    const result = parsePackageJson(file);
+    expect(result).toEqual({});
+  });
 });
