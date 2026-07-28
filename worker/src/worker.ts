@@ -59,8 +59,8 @@ const CORS_HEADERS = {
 function validateOrigin(origin: string | null, env: Env): string | null {
   if (!origin) return null;
 
-  // Always allow localhost for development
-  if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) {
+  // Only allow localhost:3000 for frontend development
+  if (/^https?:\/\/localhost:3000$/.test(origin)) {
     return origin;
   }
 
@@ -986,7 +986,7 @@ Declared Winner: ${winner}`;
 
 export default {
   async fetch(request: Request, env: Env, _ctx?: any): Promise<Response> {
-    const origin = request.url ? new URL(request.url).origin : null;
+    const origin = request.headers.get("Origin") || (request.url ? new URL(request.url).origin : null);
 
     if (request.method === "OPTIONS") {
       const allowedOrigin = validateOrigin(origin, env);
